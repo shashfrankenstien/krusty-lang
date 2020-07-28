@@ -1,8 +1,9 @@
 use regex::RegexSet;
+use regex::Regex;
 use lazy_static::lazy_static;
 
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum Token {
     Symbol(String),
     Number(String),
@@ -35,6 +36,8 @@ lazy_static! {
         r#"^('|")$"#, //start of string
         r#"^('|")[^'"]*$"#, //start of string
     ]).unwrap();
+
+    static ref RE_QUOTES: Regex = Regex::new(r#"['"]"#).unwrap();
 }
 
 
@@ -59,7 +62,7 @@ impl Token {
             return match m[0] {
                 0 => Some(Token::Symbol(txt.to_string())),
                 1 => Some(Token::Number(txt.to_string())),
-                2 => Some(Token::Text(txt.to_string())),
+                2 => Some(Token::Text(RE_QUOTES.replace_all(txt, "").to_string())),
                 3 => Some(Token::Arith(txt.to_string())),
                 4 => Some(Token::Separator(txt.to_string())),
                 5 => Some(Token::ScopeStart(txt.to_string())),

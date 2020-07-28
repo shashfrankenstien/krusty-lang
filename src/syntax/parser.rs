@@ -1,14 +1,14 @@
-use crate::lexer;
+use crate::syntax::lexer;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub enum Operator {
     Assign,
     Arith(char),
     List,
     Func,
-    Call,
     Scope,
-    Generic,
+    Call,
+    NotFound,
 }
 
 impl Operator {
@@ -25,7 +25,7 @@ impl Operator {
 }
 
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub enum Dtype {
     Num(f64),
     Text(String),
@@ -46,11 +46,10 @@ impl Dtype {
 }
 
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub struct Expression {
     op: Operator,
     elems: Vec<Dtype>,
-    _op_found: bool,
 }
 
 
@@ -71,11 +70,17 @@ impl Expression {
         }
     }
 
+    fn _op_found(&self) -> bool {
+        match self.op {
+            Operator::NotFound => false,
+            _ => true
+        }
+    }
+
     fn new() -> Expression {
         Expression {
-            op: Operator::Generic,
+            op: Operator::NotFound,
             elems: Vec::new(),
-            _op_found: false,
         }
     }
 
@@ -83,11 +88,6 @@ impl Expression {
     fn parse(&mut self, tokens: &mut Scanner) {
         println!("-->");
         // println!("{:?}", tokens);
-        // let mut pos: usize = 0;
-        // let mut scope_start = 0;
-        // if tokens.len()==0 {
-        //     return 0;
-        // }
         loop {
             let tok = tokens.get_token();
             if tok.is_none() {
@@ -104,15 +104,14 @@ impl Expression {
                 break;
             }
             if let Some(d) = Dtype::find(&tok) {
-                if !self._op_found {
+                if !self._op_found() {
                     self.elems.push(d);
                 } else {
                     println!("RHS -++");
                     let mut exp = Expression::new();
                     tokens.inc();// look forward
                     exp.parse(tokens);
-                    // pos += _pos;
-                    if exp._op_found {
+                    if exp._op_found() {
                         exp.elems.push(d);
                         exp.elems.rotate_right(1); //moving d to first elem
                         self.elems.push(Dtype::Expr(exp));
@@ -121,24 +120,22 @@ impl Expression {
                     } else {
                         panic!("What happened here! {:?} {:?}", d, exp);
                     }
-                    break;
                     println!("RHS ---");
+                    break;
                 }
             } else if let Some(o) = Operator::find(&tok) {
-                if o==Operator::Scope {
-                    if !self._op_found && self.elems.len()==1 {
+                if let Operator::Scope = o {
+                    if !self._op_found() && self.elems.len()==1 {
                         if let Dtype::Symbol(_)=self.elems[0] {
                             println!("FUNC CALL");
-                            self._op_found = true;
                             self.op = Operator::Call;
                         }
                     }
                     let mut expl = ExprList::new();
                     tokens.inc(); //skip the scope start symbol
                     expl.parse(tokens);
-                    // pos += _pos;
                     if let Some(nxt_t) = tokens.get_token() {
-                        if *nxt_t==lexer::Token::FuncDef("=>".to_string()) { //Handle ()=>{} function definition
+                        if let lexer::Token::FuncDef(_) = *nxt_t { //Handle ()=>{} function definition
                             let mut exp = Expression::new();
                             exp.parse(tokens);
                             exp.elems.push(Dtype::Grouped(expl));
@@ -149,17 +146,12 @@ impl Expression {
                             self.elems.push(Dtype::Grouped(expl));
                         }
                     }
-                    // println!("- Scope end {:?}", &tokens[pos..]);
                     println!("- Scope end SELF {:?}", self);
-                    continue;
-                } else if !self._op_found {
+                    continue; //skip final increment
+                } else if !self._op_found() {
                     println!("{:?}", o);
-                    self._op_found = true;
                     self.op = o;
                 } else {
-                    if o==Operator::Func {
-                        println!("- FUNCTIOOOOOONNN {:?}", self);
-                    }
                     let mut exp = Expression::new();
                     exp.parse(tokens);
                     if exp.elems.len()!=0 {
@@ -167,17 +159,15 @@ impl Expression {
                     }
                 }
             }
-            // pos+=1;
             tokens.inc();
         }
         println!("<--");
-        // pos
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub struct ExprList {
-    exprs: Vec<Expression>
+    exprs: Vec<Expression>,
 }
 
 impl ExprList {
@@ -189,17 +179,12 @@ impl ExprList {
 
     fn parse(&mut self, tokens: &mut Scanner) {
         println!("-->>>>>>>");
-        // println!("{:?}", tokens);
-        // let mut pos: usize = 0;
         loop {
-            // let tok = tokens.get_token();
             let mut exp = Expression::new();
             exp.parse(tokens);
             println!("=========");
-            // println!("{} {} {:?}", pos, pos+npos, exp);
             println!("{} {:?}", tokens._pointer, exp);
             println!("{}", exp.elems.len());
-            // println!("{:?}", &tokens[pos+npos-1]);
             println!("=========");
             if exp.elems.len()>0 {
                 self.exprs.push(exp);
@@ -207,15 +192,13 @@ impl ExprList {
 
             let mut scope_ended = false;
             if let Some(t)=tokens.get_prev() {
-                scope_ended = Expression::_scope_end_token(t); // very hacky
+                scope_ended = Expression::_scope_end_token(t);
             }
-            // pos += npos;
             if tokens.get_token().is_none() || scope_ended==true {
                 break;
             }
         }
         println!("<<<<<<<<---");
-        // pos
     }
 }
 
@@ -269,32 +252,11 @@ impl Scanner {
 
 
 pub fn parse(tokens: Vec<lexer::Token>) {
-    // println!("{:?}", tokens);
-    // let e = Expression::new(&tokens);
-    // for ex in &e {
-    //     println!("{:?}", ex);
-    // }
+
     let mut scan = Scanner::new(&tokens);
     let mut output = ExprList::new();
     output.parse(&mut scan);
-    for o in &output.exprs {
-        println!("{:?}", o)
+    for (i,o) in output.exprs.iter().enumerate() {
+        println!("{} {:?}", i, o)
     }
-    // // let mut exp = Expression::new();
-    // // let mut prev_elem: Option<Dtype> = None;
-    // let mut pos = 0;
-    // loop {
-    //     let tok = &tokens[pos..];
-    //     let mut exp = Expression::new();
-    //     let npos = exp.parse(tok);
-
-    //     println!("=========");
-    //     println!("{} {:?}", pos, exp);
-    //     println!("{:?}", &tokens[pos..pos+npos]);
-    //     pos += npos;
-    //     output.push(exp);
-    //     if tok.len()==0 {
-    //         break;
-    //     }
-    // }
 }
