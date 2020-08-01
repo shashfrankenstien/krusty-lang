@@ -1,21 +1,27 @@
-x = 100 + 5;
+x = (100 * 5 + 10);
 print(x, 10);
-print(10);
 
-y = 1;
+g = 20;
 
-f = (a)=>{
+#a = 1;
+a = g;
+
+y = (1,2);
+
+f = (a,b,x)=>{
     print(a);
     print(1);
-    k = ()=>{print(x)};
-
+    k = ()=>{print(x,)};
 };
 
+print( 1 + 2);
 
 name = "shashank";
 
 mane = '1,2,3,4';
-mane = 1,2,3,4;
+face = mane;
+
+mane2 = 1,2,3,4;
 
 
-f(1);
+f(1) + 1;
