@@ -3,18 +3,33 @@ use regex::Regex;
 use lazy_static::lazy_static;
 
 
+
+// #[derive(Debug, Clone)]
+// pub enum Operator {
+//     Call,
+//     NotFound,
+// }
+
+// #[derive(Debug, Clone)]
+// pub enum Obj {
+//     Expr(Expression),
+//     Grouped(ExprList),
+//     Null
+// }
+
 #[derive(Debug, Clone)]
 pub enum Token {
-    Symbol(String),
-    Number(String),
+    Number(f64),
     Text(String),
-    Arith(String),
-    Separator(String),
-    ScopeStart(String),
-    ScopeEnd(String),
-    FuncDef(String),
-    List(String),
-    Assign(String),
+    Symbol(String),
+    Arith(char),
+    ScopeStart(char),
+    ScopeEnd(char),
+    Separator,
+    FuncDef,
+    FuncCall,
+    List,
+    Assign,
     _Comment,
     _NewLine,
 }
@@ -50,7 +65,7 @@ lazy_static! {
 impl Token {
     pub fn is_stmt_end_token(&self) -> bool {
         match self {
-            Token::Separator(_) => true,
+            Token::Separator => true,
             // lexer::Token::ScopeEnd(_) => true,
             _ => false
         }
@@ -87,15 +102,15 @@ impl Token {
         if !m.is_empty() {
             return match m[0] {
                 0 => Some(Token::Symbol(txt.to_string())),
-                1 => Some(Token::Number(txt.to_string())),
+                1 => Some(Token::Number(txt.parse().expect("This is not a number"))),
                 2 => Some(Token::Text(RE_QUOTES.replace_all(txt, "").to_string())),
-                3 => Some(Token::Arith(txt.to_string())),
-                4 => Some(Token::Separator(txt.to_string())),
-                5 => Some(Token::ScopeStart(txt.to_string())),
-                6 => Some(Token::ScopeEnd(txt.to_string())),
-                7 => Some(Token::FuncDef(txt.to_string())),
-                8 => Some(Token::List(txt.to_string())),
-                9 => Some(Token::Assign(txt.to_string())),
+                3 => Some(Token::Arith(txt.chars().nth(0).unwrap())),
+                5 => Some(Token::ScopeStart(txt.chars().nth(0).unwrap())),
+                6 => Some(Token::ScopeEnd(txt.chars().nth(0).unwrap())),
+                4 => Some(Token::Separator),
+                7 => Some(Token::FuncDef),
+                8 => Some(Token::List),
+                9 => Some(Token::Assign),
                 10 => Some(Token::_Comment),
                 11 => Some(Token::_NewLine),
                 _ => None
@@ -119,6 +134,11 @@ pub fn lex(code: String) -> Vec<Token> {
             match Token::create(&word.trim_matches(' ')) {
                 Some(t) => {
                     // println!("{:?}", t);
+                    if let Token::ScopeStart(_) = t {
+                        if let Token::Symbol(_) = out[out.len()-1] {
+                            out.push(Token::FuncCall);
+                        }
+                    }
                     out.push(t);
                     word.clear();
                 },
@@ -129,7 +149,14 @@ pub fn lex(code: String) -> Vec<Token> {
     }
     if word.len() != 0 { // check remainder
         match Token::create(&word.trim_matches(' ')) {
-            Some(t) => out.push(t),
+            Some(t) => {
+                if let Token::ScopeStart(_) = t {
+                    if let Token::Symbol(_) = out[out.len()-1] {
+                        out.push(Token::FuncCall);
+                    }
+                }
+                out.push(t);
+            },
             _ => ()
         }
     }

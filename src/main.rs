@@ -7,13 +7,10 @@ use std::env;
 mod syntax {
     pub mod lexer;
     pub mod parser;
-    pub mod evaluator;
 }
 
-use syntax::parser;
 use syntax::lexer;
-use syntax::evaluator::Env;
-
+use syntax::parser;
 
 
 fn main() {
@@ -28,10 +25,11 @@ fn main() {
         f.read_to_string(&mut code).expect("Can't read this");
 
         let tokens = lexer::lex(code);
-        // println!("{:?}", t)
         let tree = parser::parse(tokens);
-
-        let mut env = Env::new(None);
-        let _vo = env.disperse(&tree);
+        // for t in &tree.exprs {
+        //     println!("{:?}", t);
+        // }
+        // let mut env = Env::new(None);
+        // let _vo = env.disperse(&tree);
     }
 }

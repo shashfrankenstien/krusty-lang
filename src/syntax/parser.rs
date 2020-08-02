@@ -1,80 +1,85 @@
 use crate::syntax::lexer;
 
-#[derive(Debug, Clone)]
-pub enum Operator {
-    Assign,
-    Arith(char),
-    List,
-    Func,
-    Scope,
-    Call,
-    NotFound,
-}
+// #[derive(Debug, Clone)]
+// pub enum Operator {
+//     Assign,
+//     Arith(char),
+//     List,
+//     Func,
+//     Scope,
+//     Call,
+//     NotFound,
+// }
 
-impl Operator {
-    fn find(tok: &lexer::Token) -> Option<Operator> {
-        match tok {
-            lexer::Token::Arith(n) => Some(Operator::Arith(n.chars().nth(0).unwrap())),
-            lexer::Token::FuncDef(_) => Some(Operator::Func),
-            lexer::Token::Assign(_) => Some(Operator::Assign),
-            lexer::Token::List(_) => Some(Operator::List),
-            lexer::Token::ScopeStart(_) => Some(Operator::Scope),
-            _ => None
-        }
-    }
-}
-
-
-#[derive(Debug, Clone)]
-pub enum Obj {
-    Num(f64),
-    Text(String),
-    Symbol(String),
-    Expr(Expression),
-    Grouped(ExprList),
-    Null
-}
-
-impl Obj {
-    fn find(tok: &lexer::Token) -> Option<Obj> {
-        match tok {
-            lexer::Token::Symbol(n) => Some(Obj::Symbol(n.clone())),
-            lexer::Token::Number(n) => Some(Obj::Num(n.parse().expect("This is not a number"))),
-            lexer::Token::Text(n) => Some(Obj::Text(n.clone())),
-            _ => None
-        }
-    }
-
-}
-
-// impl Copy for Obj {
-
+// impl Operator {
+//     fn find(tok: &lexer::Token) -> Option<Operator> {
+//         match tok {
+//             lexer::Token::Arith(n) => Some(Operator::Arith(n.chars().nth(0).unwrap())),
+//             lexer::Token::FuncDef(_) => Some(Operator::Func),
+//             lexer::Token::Assign(_) => Some(Operator::Assign),
+//             lexer::Token::List(_) => Some(Operator::List),
+//             lexer::Token::ScopeStart(_) => Some(Operator::Scope),
+//             _ => None
+//         }
+//     }
 // }
 
 
 #[derive(Debug, Clone)]
+pub enum Obj {
+    Object(lexer::Token),
+    Operator(lexer::Token),
+    Scope(lexer::Token),
+    Expr(Box<Expression>),
+    Group(ExprList),
+    Null
+}
+
+impl Obj {
+    fn find(tok: &lexer::Token) -> Obj {
+        use lexer::Token;
+        match tok {
+            Token::Symbol(_) | Token::Number(_) | Token::Text(_) => Obj::Object(tok.clone()),
+            Token::Arith(_) | Token::FuncDef | Token::Assign | Token::List | Token::FuncCall => Obj::Operator(tok.clone()),
+            Token::ScopeStart(_) => Obj::Scope(tok.clone()),
+            _ => Obj::Null
+        }
+    }
+}
+
+
+
+
+#[derive(Debug, Clone)]
 pub struct Expression {
-    pub op: Operator,
+    pub op: Obj,
     pub elems: Vec<Obj>,
 }
 
 
 impl Expression {
 
-    fn _op_found(&self) -> bool {
+    fn _start_new_exp(&self) -> bool {
         match self.op {
-            Operator::NotFound => false,
+            Obj::Null | Obj::Operator(lexer::Token::List) => false,
             _ => true
         }
     }
 
     fn new() -> Expression {
         Expression {
-            op: Operator::NotFound,
+            op: Obj::Null,
             elems: Vec::new(),
         }
     }
 
+    fn to_object(self) -> Obj {
+        if self.elems.len()==1 {
+            self.elems[0].clone()
+        } else {
+            Obj::Expr(Box::new(self))
+        }
+    }
 
     fn parse(&mut self, tokens: &mut Scanner) {
         // println!("-->");
@@ -90,71 +95,69 @@ impl Expression {
                 tokens.inc();
                 break;
             } else if let lexer::Token::_Comment = tok {
-                // loop till EOL
-                loop {
+                loop { // loop till EOL
                     tokens.inc();
                     if let Some(t) = tokens.get_token() {
                         if t.is_newline_token() {
                             break;
                         }
                     }
-                }
+                };
                 tokens.inc();
                 break;
-            } else if let Some(d) = Obj::find(&tok) {
-                if !self._op_found() {
-                    self.elems.push(d);
-                } else {
-                    // println!("RHS -++");
-                    let mut exp = Expression::new();
-                    tokens.inc();// look forward
-                    exp.parse(tokens);
-                    if exp._op_found() {
-                        exp.elems.push(d);
-                        exp.elems.rotate_right(1); //moving d to first elem
-                        self.elems.push(Obj::Expr(exp));
-                    } else if exp.elems.len() == 0 {
-                        self.elems.push(d);
+            }
+            let obj = Obj::find(&tok);
+            match obj {
+                Obj::Object(_) => {
+                    if !self._start_new_exp() {
+                        self.elems.push(obj);
                     } else {
-                        panic!("What happened here! {:?} {:?}", d, exp);
+                        // println!("RHS -++");
+                        let mut exp = Expression::new();
+                        tokens.inc();// look forward
+                        exp.parse(tokens);
+                        if exp.elems.len() != 0 {
+                            exp.elems.push(obj);
+                            exp.elems.rotate_right(1); //moving d to first elem
+                            self.elems.push(exp.to_object());
+                        } else {
+                            self.elems.push(obj);
+                        }
+                        // println!("RHS ---");
+                        break;
                     }
-                    // println!("RHS ---");
-                    break;
-                }
-            } else if let Some(o) = Operator::find(&tok) {
-                if let Operator::Scope = o {
-                    if !self._op_found() && self.elems.len()==1 {
-                        if let Obj::Symbol(_)=self.elems[0] {
-                            // println!("FUNC CALL");
-                            self.op = Operator::Call;
+                },
+                Obj::Operator(op) => {
+                    if !self._start_new_exp() {
+                        self.op = Obj::Operator(op);
+                    } else {
+                        let mut exp = Expression::new();
+                        exp.parse(tokens);
+                        if exp.elems.len()!=0 {
+                            self.elems.push(exp.to_object());
                         }
                     }
-                    let mut expl = ExprList::new();
+                },
+                Obj::Scope(_) => {
+                    let mut exp_list = ExprList::new();
                     tokens.inc(); //skip the scope start symbol
-                    expl.parse(tokens);
+                    exp_list.parse(tokens);
+                    let exp_obj = exp_list.to_object();
                     if let Some(nxt_t) = tokens.get_token() {
-                        if let lexer::Token::FuncDef(_) = *nxt_t { //Handle ()=>{} function definition
+                        if let lexer::Token::FuncDef = *nxt_t { //Handle ()=>{} function definition
                             let mut exp = Expression::new();
-                            exp.elems.push(Obj::Grouped(expl));
+                            exp.elems.push(exp_obj);
                             exp.parse(tokens);
-                            self.elems.push(Obj::Expr(exp));
+                            self.elems.push(exp.to_object());
                             break;
                         } else {
-                            self.elems.push(Obj::Grouped(expl));
+                            self.elems.push(exp_obj);
                         }
                     }
                     // println!("- Scope end SELF {:?}", self);
                     continue; //skip final increment
-                } else if !self._op_found() {
-                    // println!("{:?}", o);
-                    self.op = o;
-                } else {
-                    let mut exp = Expression::new();
-                    exp.parse(tokens);
-                    if exp.elems.len()!=0 {
-                        self.elems.push(Obj::Expr(exp));
-                    }
-                }
+                },
+                _=>()
             }
             tokens.inc();
         }
@@ -179,11 +182,10 @@ impl ExprList {
         loop {
             let mut exp = Expression::new();
             exp.parse(tokens);
-            // println!("=========");
-            // println!("{} {:?}", tokens._pointer, exp);
-            // println!("{}", exp.elems.len());
-            // println!("=========");
             if exp.elems.len()>0 {
+                if let Obj::Null = exp.op {
+                    exp.op = Obj::Operator(lexer::Token::List)
+                }
                 self.exprs.push(exp);
             }
 
@@ -196,6 +198,16 @@ impl ExprList {
             }
         }
         // println!("<<<<<<<<---");
+    }
+
+    fn to_object(mut self) -> Obj {
+        if self.exprs.len()==0 {
+            Obj::Null
+        } else if self.exprs.len()==1 {
+            self.exprs.pop().unwrap().to_object()
+        } else {
+            Obj::Group(self)
+        }
     }
 }
 
@@ -218,11 +230,10 @@ impl Scanner {
     }
     fn inc(&mut self) {
         self._pointer += 1;
-        // println!("{} {}", self._pointer, self.tokens.len());
     }
-    fn dec(&mut self) {
-        self._pointer -= 1;
-    }
+    // fn dec(&mut self) {
+    //     self._pointer -= 1;
+    // }
     fn get_token(&self) -> Option<&lexer::Token> {
         if self._valid_index(self._pointer) {
             Some(&self.tokens[self._pointer])
@@ -237,13 +248,13 @@ impl Scanner {
             None
         }
     }
-    fn get_next(&self) -> Option<&lexer::Token> {
-        if self._valid_index(self._pointer+1) {
-            Some(&self.tokens[self._pointer+1])
-        } else {
-            None
-        }
-    }
+    // fn get_next(&self) -> Option<&lexer::Token> {
+    //     if self._valid_index(self._pointer+1) {
+    //         Some(&self.tokens[self._pointer+1])
+    //     } else {
+    //         None
+    //     }
+    // }
 
 }
 
