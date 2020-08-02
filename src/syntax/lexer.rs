@@ -70,7 +70,7 @@ impl Token {
         }
     }
 
-    fn tokenize(value: &str) -> Option<Token> {
+    fn create(value: &str) -> Option<Token> {
         if RE_PASS.is_match(value) {
             return None
         }
@@ -116,7 +116,7 @@ pub fn lex(code: String) -> Vec<Token> {
         if !RE.is_match(&word.trim_matches(' ')) && (word.trim_matches(' ')!="") {
             word.pop();
             // println!("{} {}", word, RE.is_match(&word));
-            match Token::tokenize(&word.trim_matches(' ')) {
+            match Token::create(&word.trim_matches(' ')) {
                 Some(t) => {
                     // println!("{:?}", t);
                     out.push(t);
@@ -128,7 +128,7 @@ pub fn lex(code: String) -> Vec<Token> {
         }
     }
     if word.len() != 0 { // check remainder
-        match Token::tokenize(&word.trim_matches(' ')) {
+        match Token::create(&word.trim_matches(' ')) {
             Some(t) => out.push(t),
             _ => ()
         }

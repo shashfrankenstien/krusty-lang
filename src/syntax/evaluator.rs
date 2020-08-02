@@ -28,15 +28,62 @@ impl<'a> Env<'a> {
         }
     }
 
+    pub fn disperse(&mut self, elist: &'a parser::ExprList) {
+        for o in &elist.exprs {
+            self.solve_expr(o);
+            println!("{:?}=>>", self);
+        }
+        // let vo: Vec<parser::Obj> = Vec::new();
+    }
+
     fn get(&self, key: &String) -> Option<parser::Obj> {
         match self.vars.get(key) {
             Some(v) => Some(v.clone()),
             None => {
                 match self.parent {
                     Some(p) => p.get(key),
-                    None => panic!("'{}' not found", key)
+                    None => panic!("Symbol '{}' not found", key)
                 }
             }
+        }
+    }
+
+    fn assign(&mut self, key: &'a parser::Obj, value: &'a parser::Obj) {
+        if let parser::Obj::Symbol(var) = key {
+            println!("{:?}", var);
+            match value {
+                parser::Obj::Num(_) | parser::Obj::Text(_) => {
+                    self.vars.insert(var.to_string(), value.clone());
+                },
+                parser::Obj::Symbol(s) => {
+                    let mo = self.get(s).unwrap();
+                    self.vars.insert(var.to_string(), mo);
+                },
+                parser::Obj::Expr(x) => {
+                    match self.solve_expr(x) {
+                        Some(o) => {self.vars.insert(var.to_string(), o.clone());},
+                        None => {self.vars.insert(var.to_string(), parser::Obj::Null);}
+                    }
+                },
+                parser::Obj::Grouped(gx) => {
+                    if gx.exprs.len()==1 {
+                        match self.solve_expr(&gx.exprs[0]) {
+                            Some(o) => {self.vars.insert(var.to_string(), o.clone());},
+                            None => {self.vars.insert(var.to_string(), parser::Obj::Null);}
+                        }
+                    } else {
+                        self.vars.insert(var.to_string(), parser::Obj::Null);
+                    }
+                    // match self.solve_expr(x) {
+                    //     Some(o) => {self.vars.insert(var.to_string(), o.clone());},
+                    //     None => {self.vars.insert(var.to_string(), parser::Obj::Null);}
+                    // }
+                },
+                _ => {self.vars.insert(var.to_string(), parser::Obj::Null);},
+            };
+            //
+        } else {
+            panic!("LHS is not a valid symbol");
         }
     }
 
@@ -84,43 +131,10 @@ impl<'a> Env<'a> {
                 if exp.elems.len() > 2 {
                     panic!("Illegal assignment");
                 }
-                if let parser::Obj::Symbol(var) = &exp.elems[0] {
-                    println!("{:?}", var);
-                    match &exp.elems[1] {
-                        parser::Obj::Expr(x) => {
-                            match self.solve_expr(x) {
-                                Some(o) => {
-                                    self.vars.insert(var.to_string(), o.clone());
-                                    return Some(o);
-                                },
-                                None => return None
-                            }
-                        },
-                        parser::Obj::Symbol(s) => {
-                            let mo = self.get(s).expect("Symbol not found");
-                            println!("YOOOOOO");
-                            self.vars.insert(var.to_string(), mo);
-                        },
-                        parser::Obj::Num(_) | parser::Obj::Text(_) => {
-                            self.vars.insert(var.to_string(), exp.elems[1].clone());
-                        },
-                        _ => ()
-                    }
-                    //
-                } else {
-                    panic!("LHS is not a valid symbol");
-                }
-                Some(parser::Obj::Num(0.))
+                self.assign(&exp.elems[0], &exp.elems[1]);
+                Some(parser::Obj::Null)
             },
             _ => None
         }
-    }
-
-    pub fn disperse(&mut self, elist: &'a parser::ExprList) {
-        for o in &elist.exprs {
-            self.solve_expr(o);
-            println!("{:?}=>>", self);
-        }
-        // let vo: Vec<parser::Obj> = Vec::new();
     }
 }

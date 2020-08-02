@@ -32,6 +32,7 @@ pub enum Obj {
     Symbol(String),
     Expr(Expression),
     Grouped(ExprList),
+    Null
 }
 
 impl Obj {
