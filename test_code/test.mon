@@ -1,7 +1,9 @@
+print = (a)=>{1};
+
 x = (100 * 5) + 10;
 print(x 10 1);
 
-g = (20,);
+g = (20);
 
 #a = 1;
 a = g;
@@ -14,14 +16,16 @@ f = (a,b,x)=>{
     k = ()=>print(x,);
 };
 
-print( 1 + 2);
+print(1 + 2);
+print(()=>{});
 
 name = "shashank";
 
 mane = '1,2,3,4';
 face = mane;
 
-mane2 = 1,2,3,()=>{print(x,)};
+k = ()=>print(x,);
+mane2 = 1,2,3,k;
 mane3 = (1 2 3 4);
 
 

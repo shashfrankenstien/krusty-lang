@@ -1,15 +1,31 @@
+use std::fmt;
+
 use crate::syntax::lexer;
 
 
+#[derive(Debug, Clone)]
+pub struct FuncDef {
+    args: Obj,
+    body: Obj
+}
 
 #[derive(Debug, Clone)]
 pub enum Obj {
     Object(lexer::Token),
     Operator(lexer::Token),
-    Scope(lexer::Token),
+    Scope(char),
     Expr(Box<Expression>),
     Group(ExprList),
-    Null
+    // Group(Vec<Obj>),
+    Null,
+    List(Vec<Obj>),
+    Func(Box<FuncDef>),
+}
+
+impl fmt::Display for Obj {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 impl Obj {
@@ -18,7 +34,7 @@ impl Obj {
         match tok {
             Token::Symbol(_) | Token::Number(_) | Token::Text(_) => Obj::Object(tok.clone()),
             Token::Arith(_) | Token::FuncDef | Token::Assign | Token::List | Token::FuncCall => Obj::Operator(tok.clone()),
-            Token::ScopeStart(_) => Obj::Scope(tok.clone()),
+            Token::ScopeStart(s) => Obj::Scope(*s),
             _ => Obj::Null
         }
     }
@@ -43,9 +59,18 @@ impl Expression {
         }
     }
 
-    fn to_object(self) -> Obj {
-        if self.elems.len()==1 {
-            self.elems[0].clone()
+    fn to_object(mut self) -> Obj {
+        if let Obj::Operator(lexer::Token::List) = self.op {
+            Obj::List(self.elems)
+        } else if let Obj::Operator(lexer::Token::FuncDef) = self.op {
+            if self.elems.len() == 2 {
+                let body = self.elems.pop().unwrap();
+                let args = self.elems.pop().unwrap();
+                // Obj::Func(FuncDef {args, body})
+                Obj::Func(Box::new(FuncDef {args, body}))
+            } else {
+                panic!("Illegal function definition - {:?}", self)
+            }
         } else {
             Obj::Expr(Box::new(self))
         }
@@ -99,17 +124,23 @@ impl Expression {
                         break;
                     }
                 },
-                Obj::Scope(_) => {
+                Obj::Scope(s) => {
                     let mut exp_list = ExprList::new();
                     tokens.inc(); //skip the scope start symbol
                     exp_list.parse(tokens);
-                    let exp_obj = exp_list.to_object();
+
+                    let flatten_obj = if s=='(' {true} else {false};
+                    let exp_obj = exp_list.to_object(flatten_obj);
+
                     if let Some(nxt_t) = tokens.get_token() {
                         if let lexer::Token::FuncDef = *nxt_t { //Handle ()=>{} function definition
                             let mut exp = Expression::new();
                             exp.elems.push(exp_obj);
                             exp.parse(tokens);
-                            self.elems.push(exp.to_object());
+                            match exp.elems[1] {
+                                Obj::Group(_) | Obj::Expr(_) => self.elems.push(exp.to_object()),
+                                _ => panic!("Invalid function definition {:?}", exp) // func body should be Group or Expr
+                            };
                             break;
                         } else {
                             self.elems.push(exp_obj);
@@ -147,10 +178,27 @@ pub struct ExprList {
     pub exprs: Vec<Expression>,
 }
 
+impl fmt::Display for ExprList {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "ExprList({:?})", self.exprs)
+    }
+}
+
 impl ExprList {
     fn new() -> ExprList {
         ExprList {
             exprs: Vec::new(),
+        }
+    }
+
+    fn to_object(mut self, flatten:bool) -> Obj {
+        match self.exprs.len() {
+            0 if flatten => Obj::List(vec![]),
+            1 if flatten => self.exprs.pop().unwrap().to_object(),
+            _ => {
+                // let obj_vec = self.exprs.into_iter().map(|x| x.to_object()).collect();
+                Obj::Group(self)
+            }
         }
     }
 
@@ -175,16 +223,6 @@ impl ExprList {
             }
         }
         // println!("<<<<<<<<---");
-    }
-
-    fn to_object(mut self) -> Obj {
-        if self.exprs.len()==0 {
-            Obj::Null
-        } else if self.exprs.len()==1 {
-            self.exprs.pop().unwrap().to_object()
-        } else {
-            Obj::Group(self)
-        }
     }
 }
 

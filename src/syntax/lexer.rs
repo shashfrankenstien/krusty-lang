@@ -24,8 +24,8 @@ pub enum Token {
 
 lazy_static! {
     static ref RE: RegexSet = RegexSet::new(&[
-        r"^[a-zA-Z]+[a-zA-Z0-9]*$", //symbol
-        r"^[.0-9]+$", //numbers
+        r"^[\*]?[_a-zA-Z]+[_a-zA-Z0-9]*$", //symbol
+        r"^[+-]?[.0-9]+$", //numbers
         r#"(^"\S*"$)|(^'\S*'$)"#, //strings1
         r#"^[+\-/\*]$"#, //Arith
         r"^;$", //sep

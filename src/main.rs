@@ -32,6 +32,7 @@ fn main() {
         //     println!("{:?}", t);
         // }
         let mut env = Env::new(None);
-        let _vo = env.disperse(&tree);
+        let _vo = env.run(&tree);
+        println!("FINAL {:?}", env);
     }
 }
