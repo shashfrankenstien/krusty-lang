@@ -18,7 +18,7 @@ use syntax::evaluator::Env;
 fn main() {
     // Prints each argument on a separate line
     let argv: Vec<String> = env::args().collect();
-    println!("{:?}", argv.len());
+    // println!("{:?}", argv.len());
     if argv.len() > 1 {
         let filename = &argv[1];
 
@@ -33,6 +33,11 @@ fn main() {
         // }
         let mut env = Env::new(None);
         let _vo = env.run(&tree);
-        println!("FINAL {:?}", env);
+        if env::var("VERBOSE").is_ok() {
+            println!("FINAL {:?}", env);
+        }
+        println!("{:?}", _vo);
+    } else {
+        panic!("Error: repl is not ready yet!")
     }
 }

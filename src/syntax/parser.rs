@@ -1,12 +1,13 @@
 use std::fmt;
+use std::env;
 
 use crate::syntax::lexer;
 
 
 #[derive(Debug, Clone)]
 pub struct FuncDef {
-    args: Obj,
-    body: Obj
+    pub args: Obj,
+    pub body: Obj
 }
 
 #[derive(Debug, Clone)]
@@ -38,6 +39,13 @@ impl Obj {
             _ => Obj::Null
         }
     }
+
+    pub fn get_list(&self) -> Option<&Vec<Obj>> {
+        match self {
+            Obj::List(l) => Some(l),
+            _ => None,
+        }
+    }
 }
 
 
@@ -59,7 +67,7 @@ impl Expression {
         }
     }
 
-    fn to_object(mut self) -> Obj {
+    pub fn to_object(mut self) -> Obj {
         if let Obj::Operator(lexer::Token::List) = self.op {
             Obj::List(self.elems)
         } else if let Obj::Operator(lexer::Token::FuncDef) = self.op {
@@ -67,6 +75,14 @@ impl Expression {
                 let body = self.elems.pop().unwrap();
                 let args = self.elems.pop().unwrap();
                 // Obj::Func(FuncDef {args, body})
+                match args {
+                    Obj::List(_) => (),
+                    _ => panic!("Invalid function arguments")
+                }
+                match body {
+                    Obj::Group(_) | Obj::Expr(_) => (),
+                    _ => panic!("Invalid function body")
+                }
                 Obj::Func(Box::new(FuncDef {args, body}))
             } else {
                 panic!("Illegal function definition - {:?}", self)
@@ -279,9 +295,11 @@ pub fn parse(tokens: Vec<lexer::Token>) -> ExprList {
     let mut scan = Scanner::new(&tokens);
     let mut output = ExprList::new();
     output.parse(&mut scan);
-    for (i,o) in output.exprs.iter().enumerate() {
-        println!("{} {:?}", i, o)
+    if env::var("VERBOSE").is_ok() {
+        for (i,o) in output.exprs.iter().enumerate() {
+            println!("{} {:?}", i, o)
+        }
+        println!("------------------");
     }
-    println!("------------------");
     output
 }
