@@ -1,28 +1,5 @@
 use crate::syntax::lexer;
 
-// #[derive(Debug, Clone)]
-// pub enum Operator {
-//     Assign,
-//     Arith(char),
-//     List,
-//     Func,
-//     Scope,
-//     Call,
-//     NotFound,
-// }
-
-// impl Operator {
-//     fn find(tok: &lexer::Token) -> Option<Operator> {
-//         match tok {
-//             lexer::Token::Arith(n) => Some(Operator::Arith(n.chars().nth(0).unwrap())),
-//             lexer::Token::FuncDef(_) => Some(Operator::Func),
-//             lexer::Token::Assign(_) => Some(Operator::Assign),
-//             lexer::Token::List(_) => Some(Operator::List),
-//             lexer::Token::ScopeStart(_) => Some(Operator::Scope),
-//             _ => None
-//         }
-//     }
-// }
 
 
 #[derive(Debug, Clone)]
@@ -58,13 +35,6 @@ pub struct Expression {
 
 
 impl Expression {
-
-    fn _start_new_exp(&self) -> bool {
-        match self.op {
-            Obj::Null | Obj::Operator(lexer::Token::List) => false,
-            _ => true
-        }
-    }
 
     fn new() -> Expression {
         Expression {
@@ -109,7 +79,9 @@ impl Expression {
             let obj = Obj::find(&tok);
             match obj {
                 Obj::Object(_) => {
-                    if !self._start_new_exp() {
+                    if let Obj::Null = self.op {
+                        self.elems.push(obj);
+                    } else if let Obj::Operator(lexer::Token::List) = self.op {
                         self.elems.push(obj);
                     } else {
                         // println!("RHS -++");
@@ -118,24 +90,13 @@ impl Expression {
                         exp.parse(tokens);
                         if exp.elems.len() != 0 {
                             exp.elems.push(obj);
-                            exp.elems.rotate_right(1); //moving d to first elem
+                            exp.elems.rotate_right(1); //moving obj to first elem
                             self.elems.push(exp.to_object());
                         } else {
                             self.elems.push(obj);
                         }
                         // println!("RHS ---");
                         break;
-                    }
-                },
-                Obj::Operator(op) => {
-                    if !self._start_new_exp() {
-                        self.op = Obj::Operator(op);
-                    } else {
-                        let mut exp = Expression::new();
-                        exp.parse(tokens);
-                        if exp.elems.len()!=0 {
-                            self.elems.push(exp.to_object());
-                        }
                     }
                 },
                 Obj::Scope(_) => {
@@ -154,8 +115,24 @@ impl Expression {
                             self.elems.push(exp_obj);
                         }
                     }
-                    // println!("- Scope end SELF {:?}", self);
                     continue; //skip final increment
+                },
+                Obj::Operator(op) => {
+                    if let Obj::Null = self.op {
+                        self.op = Obj::Operator(op);
+                    } else if let Obj::Operator(lexer::Token::List) = self.op {
+                        self.op = Obj::Operator(op);
+                    } else {
+                        let mut exp = Expression::new();
+                        if self.elems.len() > 0 {
+                            exp.elems.push(self.elems.pop().unwrap());
+                        }
+                        exp.parse(tokens);
+                        if exp.elems.len()!=0 {
+                            self.elems.push(exp.to_object());
+                        }
+                        break;
+                    }
                 },
                 _=>()
             }

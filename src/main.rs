@@ -7,10 +7,12 @@ use std::env;
 mod syntax {
     pub mod lexer;
     pub mod parser;
+    pub mod evaluator;
 }
 
 use syntax::lexer;
 use syntax::parser;
+use syntax::evaluator::Env;
 
 
 fn main() {
@@ -29,7 +31,7 @@ fn main() {
         // for t in &tree.exprs {
         //     println!("{:?}", t);
         // }
-        // let mut env = Env::new(None);
-        // let _vo = env.disperse(&tree);
+        let mut env = Env::new(None);
+        let _vo = env.disperse(&tree);
     }
 }

@@ -4,19 +4,6 @@ use lazy_static::lazy_static;
 
 
 
-// #[derive(Debug, Clone)]
-// pub enum Operator {
-//     Call,
-//     NotFound,
-// }
-
-// #[derive(Debug, Clone)]
-// pub enum Obj {
-//     Expr(Expression),
-//     Grouped(ExprList),
-//     Null
-// }
-
 #[derive(Debug, Clone)]
 pub enum Token {
     Number(f64),
