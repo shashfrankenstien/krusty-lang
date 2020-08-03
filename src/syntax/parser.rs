@@ -9,6 +9,8 @@ pub struct FuncDef {
     pub body: Obj
 }
 
+
+
 #[derive(Debug, Clone)]
 pub enum Obj {
     Object(lexer::Token),
@@ -20,7 +22,7 @@ pub enum Obj {
     Null,
     List(Vec<Obj>),
     Func(Box<FuncDef>),
-    BuiltinFunc(Box<FuncDef>),
+    BuiltinFunc(String),
 }
 
 impl Obj {

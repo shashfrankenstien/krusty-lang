@@ -8,11 +8,12 @@ impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Token::Number(n) => write!(f, "{}", n),
-            Token::Text(t) => write!(f, "{}", t),
+            Token::Text(t) => write!(f, "\"{}\"", t),
             _ => write!(f, "{:?}", self),
         }
     }
 }
+
 
 impl fmt::Display for Obj {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -38,6 +39,31 @@ impl fmt::Display for ExprList {
 }
 
 
+fn _print_iterable(l: &Vec<Obj>) {
+    print!("(");
+    for member in l.iter() {
+        print!("{},", member);
+    };
+    println!(")");
+}
+
+pub fn print(args: &Vec<Obj>) -> Obj {
+    match args.len() {
+        0 => println!("Null"),
+        1 => println!("{}", args[0]),
+        _ => _print_iterable(args)
+    };
+    Obj::Null
+}
+
+
 pub fn load(env_bi: &mut HashMap<String, Obj>) {
-    env_bi.insert("Hello".to_string(), Obj::Null);
+    env_bi.insert("print".to_string(), Obj::BuiltinFunc("print".to_string()));
+}
+
+pub fn find(name: &str) -> fn(&Vec<Obj>) -> Obj {
+    match name {
+        "print" => print,
+        _ => panic!("'{}' not found", name)
+    }
 }

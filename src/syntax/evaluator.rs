@@ -216,9 +216,17 @@ impl<'a> NameSpace<'a> {
                             }
                         }
                     },
-                    // Obj::BuiltinFunc(f) => {
-
-                    // }
+                    Obj::BuiltinFunc(f) => {
+                        let f = builtins::find(&f[..]);
+                        // let args = args.iter().map(|x| {
+                        //     match x {
+                        //         Obj::Expr(ex) => self.solve_expr(ex),
+                        //         Obj::Object(Token::Symbol(s)) => self.get(s).unwrap(),
+                        //         _ => x.clone()
+                        //     }
+                        // }).collect();
+                        f(args)
+                    }
                     _ => panic!("function '{}' definition error", name)
                 }
             },

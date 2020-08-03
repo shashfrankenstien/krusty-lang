@@ -25,7 +25,7 @@ lazy_static! {
     static ref RE: RegexSet = RegexSet::new(&[
         r"^[\*]?[_a-zA-Z]+[_a-zA-Z0-9]*$", //symbol
         r"^[+-]?[.0-9]+$", //numbers
-        r#"(^"\S*"$)|(^'\S*'$)"#, //strings1
+        r#"(^".*"$)|(^'.*'$)"#, //strings1
         r#"^[+\-/\*]$"#, //Arith
         r"^;$", //sep
         r"^[({]$", //scopestart
