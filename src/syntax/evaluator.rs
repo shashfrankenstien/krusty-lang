@@ -49,10 +49,10 @@ impl<'a> NameSpace<'a> {
 
 
     fn get(&self, key: &String) -> Option<Obj> {
-        match self.builtin_funcs.get(key) {
+        match self.vars.get(key) {
             Some(v) => Some(v.clone()),
             None => {
-                match self.vars.get(key) {
+                match self.builtin_funcs.get(key) {
                     Some(v) => Some(v.clone()),
                     None => {
                         match self.parent {

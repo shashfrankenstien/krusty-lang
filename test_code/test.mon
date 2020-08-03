@@ -1,4 +1,4 @@
-print = (a)=>{1};
+# print = (a)=>{1};
 
 x = (100 * 5) + 10;
 print(x );
@@ -12,7 +12,7 @@ y = (1,2);
 
 f = (a,b,x)=>{
     print(a);
-    print(1);
+    print(b, x);
     k = ()=>print(x,);
 };
 
