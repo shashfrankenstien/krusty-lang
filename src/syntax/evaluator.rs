@@ -3,7 +3,7 @@ use std::env;
 
 use crate::syntax::parser::{Obj, Expression, ExprList};
 use crate::syntax::lexer::Token;
-
+use crate::lib::builtins;
 
 fn _arith_operate(a:Option<f64>, b:f64, op:char) -> Option<f64> {
     if env::var("VERBOSE").is_ok() {
@@ -20,15 +20,21 @@ fn _arith_operate(a:Option<f64>, b:f64, op:char) -> Option<f64> {
 
 
 #[derive(Debug)]
-pub struct Env<'a> {
+pub struct NameSpace<'a> {
+    builtin_funcs: HashMap<String, Obj>,
     vars: HashMap<String, Obj>,
-    parent: Option<&'a Env<'a>>,
+    parent: Option<&'a NameSpace<'a>>,
 }
 
-impl<'a> Env<'a> {
-    pub fn new(parent: Option<&'a Env<'a>>) -> Env<'a> {
-        Env {
+impl<'a> NameSpace<'a> {
+    pub fn new(parent: Option<&'a NameSpace<'a>>) -> NameSpace<'a> {
+        let mut builtin_funcs = HashMap::new();
+        if let None = parent {
+            builtins::load(&mut builtin_funcs);
+        }
+        NameSpace {
             vars: HashMap::new(),
+            builtin_funcs,
             parent
         }
     }
@@ -43,14 +49,19 @@ impl<'a> Env<'a> {
 
 
     fn get(&self, key: &String) -> Option<Obj> {
-        match self.vars.get(key) {
+        match self.builtin_funcs.get(key) {
             Some(v) => Some(v.clone()),
             None => {
-                match self.parent {
-                    Some(p) => p.get(key),
-                    None => panic!("Symbol '{}' not found", key)
+                match self.vars.get(key) {
+                    Some(v) => Some(v.clone()),
+                    None => {
+                        match self.parent {
+                            Some(p) => p.get(key),
+                            None => panic!("Symbol '{}' not found", key)
+                        }
+                    }
                 }
-            }
+            },
         }
     }
 
@@ -162,6 +173,7 @@ impl<'a> Env<'a> {
             Obj::Operator(Token::List) => { // These are some List type Operators still unconverted to Obj::List
                 let ret_list: Vec<Obj> = exp.elems.iter().map(|e| {
                     match e {
+                        Obj::Expr(ex) => self.solve_expr(ex),
                         Obj::Object(Token::Symbol(s)) => self.get(s).expect("Cannot find variable"),
                         _ => e.clone()
                     }
@@ -181,27 +193,35 @@ impl<'a> Env<'a> {
             Obj::Expr(e) => Obj::List(vec![self.solve_expr(e)]),
             _ => args.clone()
         };
+        let args = args.get_list().expect("function arguments should be of internal type Obj::List");
         match self.get(name) {
             None => panic!("function '{}' not defined"),
             Some(func) => {
-                if let Obj::Func(f) = func {
-                    let req_args = f.args.get_list().expect("function definition error");
-                    let incoming_args = args.get_list().expect("function arguments should be of internal type Obj::List");
-                    if req_args.len() != incoming_args.len() {
-                        panic!("function arguments for '{}' don't match", name);
-                    } else {
-                        let mut exec_env = Env::new(Some(self));
-                        for (k,v) in req_args.iter().zip(incoming_args.iter()) {
-                            exec_env.assign(&k, &v);
+                match func {
+                    Obj::Func(f) => {
+                        let req_args = f.args.get_list().expect("function definition error");
+                        if req_args.len() != args.len() {
+                            panic!("function arguments for '{}' don't match", name);
+                        } else {
+                            let mut exec_env = NameSpace::new(Some(self));
+                            for (k,v) in req_args.iter().zip(args.iter()) {
+                                exec_env.assign(&k, &v);
+                            }
+                            if env::var("VERBOSE").is_ok() {
+                                println!("CALL {} {:?}", name, f.body);
+                            }
+                            match f.body { // return function result
+                                Obj::Group(elist) => exec_env.run(&elist),
+                                _ => panic!("function '{}' definition error", name),
+                            }
                         }
-                        return match f.body {
-                            Obj::Group(elist) => exec_env.run(&elist),
-                            _ => panic!("function definition error"),
-                        };
-                    }
+                    },
+                    // Obj::BuiltinFunc(f) => {
+
+                    // }
+                    _ => panic!("function '{}' definition error", name)
                 }
             },
         }
-        Obj::Null
     }
 }

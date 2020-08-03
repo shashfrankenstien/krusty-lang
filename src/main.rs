@@ -10,9 +10,13 @@ mod syntax {
     pub mod evaluator;
 }
 
+mod lib {
+    pub mod builtins;
+}
+
 use syntax::lexer;
 use syntax::parser;
-use syntax::evaluator::Env;
+use syntax::evaluator::NameSpace;
 
 
 fn main() {
@@ -31,12 +35,12 @@ fn main() {
         // for t in &tree.exprs {
         //     println!("{:?}", t);
         // }
-        let mut env = Env::new(None);
+        let mut env = NameSpace::new(None);
         let _vo = env.run(&tree);
         if env::var("VERBOSE").is_ok() {
             println!("FINAL {:?}", env);
         }
-        println!("{:?}", _vo);
+        println!("{}", _vo);
     } else {
         panic!("Error: repl is not ready yet!")
     }

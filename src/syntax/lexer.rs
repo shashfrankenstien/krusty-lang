@@ -3,7 +3,6 @@ use regex::Regex;
 use lazy_static::lazy_static;
 
 
-
 #[derive(Debug, Clone)]
 pub enum Token {
     Number(f64),

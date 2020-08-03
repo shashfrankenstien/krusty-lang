@@ -1,4 +1,3 @@
-use std::fmt;
 use std::env;
 
 use crate::syntax::lexer;
@@ -21,12 +20,7 @@ pub enum Obj {
     Null,
     List(Vec<Obj>),
     Func(Box<FuncDef>),
-}
-
-impl fmt::Display for Obj {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
+    BuiltinFunc(Box<FuncDef>),
 }
 
 impl Obj {
@@ -194,11 +188,6 @@ pub struct ExprList {
     pub exprs: Vec<Expression>,
 }
 
-impl fmt::Display for ExprList {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "ExprList({:?})", self.exprs)
-    }
-}
 
 impl ExprList {
     fn new() -> ExprList {
