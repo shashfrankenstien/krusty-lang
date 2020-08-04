@@ -39,19 +39,23 @@ impl fmt::Display for ExprList {
 }
 
 
-fn _print_iterable(l: &Vec<Obj>) {
-    print!("(");
-    for member in l.iter() {
-        print!("{},", member);
-    };
-    println!(")");
-}
 
 pub fn print(args: &Vec<Obj>) -> Obj {
     match args.len() {
-        0 => println!("Null"),
-        1 => println!("{}", args[0]),
-        _ => _print_iterable(args)
+        0 => println!(""),
+        _ => {
+            for idx in 0..args.len() {
+                if idx > 0 {
+                    print!(" ");
+                }
+                match &args[idx] {
+                    Obj::Object(Token::Number(n)) => print!("{}", n),
+                    Obj::Object(Token::Text(t)) => print!("{}", t),
+                    _ => print!("{}", args[idx]),
+                };
+            };
+            print!("\n");
+        },
     };
     Obj::Null
 }
