@@ -15,11 +15,15 @@ print(last_func("shashank"));
 
 print("------ math -----");
 x = 1;
+print("2 * 256 =", (2 * 256));
 k = (a) => {
     (x + (2 * 10) + (10 - 2)), 45; # return list
 };
-print(k(10));
+print("k(10) = ", (k(10)) );
 
+print("------ bool -----");
+x = true;
+print(x);
 
 print("------ indexing -----");
 y = (x null "mom");

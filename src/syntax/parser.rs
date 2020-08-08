@@ -20,9 +20,10 @@ pub enum Obj {
     Expr(Box<Expression>),
     Group(ExprList),
     // Group(Vec<Obj>),
-    Null,
     List(Vec<Obj>),
     Func(Box<FuncDef>),
+    Null,
+    Bool(bool),
     BuiltinFunc(String),
 }
 

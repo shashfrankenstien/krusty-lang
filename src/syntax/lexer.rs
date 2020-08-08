@@ -37,7 +37,7 @@ lazy_static! {
         r"^=$", //assign - 9
         r"^#\S*$", //comment - 10
         r"^(\r\n|\r|\n)$", //newline - 11
-        r#"^\[.*\]$"#, //index - 12
+        r#"^\[.*\]$"#, //index operation - 12
     ]).unwrap();
 
     static ref RE_PASS: RegexSet = RegexSet::new(&[
@@ -55,6 +55,31 @@ lazy_static! {
 
 
 impl Token {
+
+    fn _which_matched(txt: &str) -> Option<Token> {
+        let m: Vec<_> = RE.matches(txt).into_iter().collect();
+        if !m.is_empty() {
+            return match m[0] {
+                0 => Some(Token::Symbol(txt.to_string())),
+                1 => Some(Token::Number(txt.parse().expect("This is not a number"))),
+                2 => Some(Token::Text(RE_QUOTES.replace_all(txt, "").to_string())),
+                3 => Some(Token::Arith(txt.chars().nth(0).unwrap())),
+                5 => Some(Token::ScopeStart(txt.chars().nth(0).unwrap())),
+                6 => Some(Token::ScopeEnd(txt.chars().nth(0).unwrap())),
+                4 => Some(Token::Separator),
+                7 => Some(Token::FuncDef),
+                8 => Some(Token::List),
+                9 => Some(Token::Assign),
+                10 => Some(Token::_Comment),
+                11 => Some(Token::_NewLine),
+                12 => Some(Token::Index(Box::new(Token::create(&RE_SQ_BRACKETS.replace_all(txt, "")).unwrap()))),
+                _ => None
+            }
+        } else {
+            None
+        }
+    }
+
     pub fn is_stmt_end_token(&self) -> bool {
         match self {
             Token::Separator => true,
@@ -87,30 +112,6 @@ impl Token {
             None => panic!("Illegal symbol {}", value)
         };
         Some(token)
-    }
-
-    fn _which_matched(txt: &str) -> Option<Token> {
-        let m: Vec<_> = RE.matches(txt).into_iter().collect();
-        if !m.is_empty() {
-            return match m[0] {
-                0 => Some(Token::Symbol(txt.to_string())),
-                1 => Some(Token::Number(txt.parse().expect("This is not a number"))),
-                2 => Some(Token::Text(RE_QUOTES.replace_all(txt, "").to_string())),
-                3 => Some(Token::Arith(txt.chars().nth(0).unwrap())),
-                5 => Some(Token::ScopeStart(txt.chars().nth(0).unwrap())),
-                6 => Some(Token::ScopeEnd(txt.chars().nth(0).unwrap())),
-                4 => Some(Token::Separator),
-                7 => Some(Token::FuncDef),
-                8 => Some(Token::List),
-                9 => Some(Token::Assign),
-                10 => Some(Token::_Comment),
-                11 => Some(Token::_NewLine),
-                12 => Some(Token::Index(Box::new(Token::create(&RE_SQ_BRACKETS.replace_all(txt, "")).unwrap()))),
-                _ => None
-            }
-        } else {
-            None
-        }
     }
 }
 

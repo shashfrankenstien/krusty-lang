@@ -20,6 +20,8 @@ impl fmt::Display for Obj {
         match self {
             Obj::Object(o) => write!(f, "{}", o),
             Obj::Operator(op) => write!(f, "{}", op),
+            Obj::Bool(b) => write!(f, "{}", b),
+            Obj::Null => write!(f, "null"),
             Obj::List(l) => {
                 write!(f, "(").unwrap();
                 for member in l {
@@ -62,8 +64,10 @@ pub fn print(args: &Vec<Obj>) -> Obj {
 
 
 pub fn load(env_bi: &mut HashMap<String, Obj>) {
-    env_bi.insert("print".to_string(), Obj::BuiltinFunc("print".to_string()));
     env_bi.insert("null".to_string(), Obj::Null);
+    env_bi.insert("true".to_string(), Obj::Bool(true));
+    env_bi.insert("false".to_string(), Obj::Bool(false));
+    env_bi.insert("print".to_string(), Obj::BuiltinFunc("print".to_string()));
 }
 
 pub fn find_func(name: &str) -> fn(&Vec<Obj>) -> Obj {
