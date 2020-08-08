@@ -1,12 +1,35 @@
+print("------ functions -----");
 
-last_func = () => {
+last_func = (name) => {
+    print(">>> entered last_func");
+    print("Hello,", name, "!");
+    print(x);
     x = 10;
-    1 + 2;
+    print("<<< leaving last_func");
+    1 + 2; # return value
 };
 
 x = -1, 6;
-
-last_func()
-
+print(last_func("shashank"));
 
 
+print("------ math -----");
+x = 1;
+k = (a) => {
+    (x + (2 * 10) + (10 - 2)), 45; # return list
+};
+print(k(10));
+
+
+print("------ indexing -----");
+y = (x null "mom");
+
+print("y =", y);
+
+pprint = (x) => {print(x)};
+
+pprint(y[0]);
+pprint(y[1]);
+pprint(y[2]);
+
+print(1, (1,2)[0], 1);

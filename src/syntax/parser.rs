@@ -15,6 +15,7 @@ pub struct FuncDef {
 pub enum Obj {
     Object(lexer::Token),
     Operator(lexer::Token),
+    SuffixOperator(lexer::Token),
     Scope(char),
     Expr(Box<Expression>),
     Group(ExprList),
@@ -31,14 +32,15 @@ impl Obj {
         match tok {
             Token::Symbol(_) | Token::Number(_) | Token::Text(_) => Obj::Object(tok.clone()),
             Token::Arith(_) | Token::FuncDef | Token::Assign | Token::List | Token::FuncCall => Obj::Operator(tok.clone()),
+            Token::Index(_) => Obj::SuffixOperator(tok.clone()),
             Token::ScopeStart(s) => Obj::Scope(*s),
             _ => Obj::Null
         }
     }
 
-    pub fn get_list(&self) -> Option<&Vec<Obj>> {
+    pub fn get_list(&self) -> Option<Vec<Obj>> {
         match self {
-            Obj::List(l) => Some(l),
+            Obj::List(l) => Some(l.clone()),
             _ => None,
         }
     }
@@ -66,10 +68,12 @@ impl Expression {
     pub fn to_object(mut self) -> Obj {
         if let Obj::Operator(lexer::Token::List) = self.op {
             Obj::List(self.elems)
-        } else if let Obj::Operator(lexer::Token::FuncDef) = self.op {
+        } else
+        if let Obj::Operator(lexer::Token::FuncDef) = self.op {
             if self.elems.len() == 2 {
                 let body = self.elems.pop().unwrap();
                 let args = self.elems.pop().unwrap();
+                println!("{:?}", args);
                 // Obj::Func(FuncDef {args, body})
                 match args {
                     Obj::List(_) => (),
@@ -121,10 +125,9 @@ impl Expression {
                     } else if let Obj::Operator(lexer::Token::List) = self.op {
                         self.elems.push(obj);
                     } else {
-                        // println!("RHS -++");
                         let mut exp = Expression::new();
                         tokens.inc();// look forward
-                        exp.parse(tokens);
+                        exp.parse(tokens); // parse RHS objects
                         if exp.elems.len() != 0 {
                             exp.elems.push(obj);
                             exp.elems.rotate_right(1); //moving obj to first elem
@@ -132,7 +135,6 @@ impl Expression {
                         } else {
                             self.elems.push(obj);
                         }
-                        // println!("RHS ---");
                         break;
                     }
                 },
@@ -161,22 +163,31 @@ impl Expression {
                     continue; //skip final increment
                 },
                 Obj::Operator(op) => {
-                    if let Obj::Null = self.op {
+                    if let Obj::Null = self.op { // No current operator
                         self.op = Obj::Operator(op);
                     } else if let Obj::Operator(lexer::Token::List) = self.op {
                         self.op = Obj::Operator(op);
                     } else {
                         let mut exp = Expression::new();
                         if self.elems.len() > 0 {
-                            exp.elems.push(self.elems.pop().unwrap());
+                            exp.elems.push(self.elems.pop().unwrap()); // setup LHS
                         }
-                        exp.parse(tokens);
+                        exp.parse(tokens); // look for RHS
                         if exp.elems.len()!=0 {
                             self.elems.push(exp.to_object());
                         }
                         break;
                     }
                 },
+                Obj::SuffixOperator(sop) => {
+                    if self.elems.len() == 0 {
+                        panic!("Suffix {} without symbol or expression", sop);
+                    }
+                    let mut exp = Expression::new();
+                    exp.elems.push(self.elems.pop().unwrap()); // setup object to apply suffix operator to
+                    exp.op = Obj::SuffixOperator(sop);
+                    self.elems.push(exp.to_object());
+                }
                 _=>()
             }
             tokens.inc();
@@ -215,7 +226,7 @@ impl ExprList {
             let mut exp = Expression::new();
             exp.parse(tokens);
             if exp.elems.len()>0 {
-                if let Obj::Null = exp.op {
+                if let Obj::Null = exp.op { // if no operator found, assume it's a list
                     exp.op = Obj::Operator(lexer::Token::List)
                 }
                 self.exprs.push(exp);

@@ -1,3 +1,4 @@
+use std::env;
 use regex::RegexSet;
 use regex::Regex;
 use lazy_static::lazy_static;
@@ -15,6 +16,7 @@ pub enum Token {
     FuncDef,
     FuncCall,
     List,
+    Index(Box<Token>),
     Assign,
     _Comment,
     _NewLine,
@@ -23,26 +25,30 @@ pub enum Token {
 
 lazy_static! {
     static ref RE: RegexSet = RegexSet::new(&[
-        r"^[\*]?[_a-zA-Z]+[_a-zA-Z0-9]*$", //symbol
-        r"^[+-]?[.0-9]+$", //numbers
-        r#"(^".*"$)|(^'.*'$)"#, //strings1
-        r#"^[+\-/\*]$"#, //Arith
-        r"^;$", //sep
-        r"^[({]$", //scopestart
-        r"^[})]$", //scopeend
-        r"^=>$", //funcDef
-        r"^,$", //List
-        r"^=$", //assign
-        r"^#\S*$", //comment
-        r"^(\r\n|\r|\n)$", //newline
+        r"^[\*]?[_a-zA-Z]+[_a-zA-Z0-9]*$", //symbol - 0
+        r"^[+-]?[.0-9]+$", //numbers - 1
+        r#"(^".*"$)|(^'.*'$)"#, //strings1 - 2
+        r#"^[+\-/\*]$"#, //Arith - 3
+        r"^;$", //sep - 4
+        r"^[({]$", //scopestart - 5
+        r"^[})]$", //scopeend - 6
+        r"^=>$", //funcDef - 7
+        r"^,$", //List - 8
+        r"^=$", //assign - 9
+        r"^#\S*$", //comment - 10
+        r"^(\r\n|\r|\n)$", //newline - 11
+        r#"^\[.*\]$"#, //index - 12
     ]).unwrap();
 
     static ref RE_PASS: RegexSet = RegexSet::new(&[
-        r#"^('|")$"#, //start of string
+        // continue parsing token if the following are encontered
         r#"^('|")[^'"]*$"#, //start of string
+        r#"^(\[|\[['"])[^'"\]]*$"#, //start of index operation
     ]).unwrap();
 
-    static ref RE_QUOTES: Regex = Regex::new(r#"['"]"#).unwrap();
+    // Some parsing helpers
+    static ref RE_QUOTES: Regex = Regex::new(r#"['"]"#).unwrap(); // for strings
+    static ref RE_SQ_BRACKETS: Regex = Regex::new(r"[\[\]]").unwrap(); // for indexing operator
 }
 
 
@@ -71,7 +77,7 @@ impl Token {
         }
     }
 
-    fn create(value: &str) -> Option<Token> {
+    pub fn create(value: &str) -> Option<Token> {
         if RE_PASS.is_match(value) {
             return None
         }
@@ -99,6 +105,7 @@ impl Token {
                 9 => Some(Token::Assign),
                 10 => Some(Token::_Comment),
                 11 => Some(Token::_NewLine),
+                12 => Some(Token::Index(Box::new(Token::create(&RE_SQ_BRACKETS.replace_all(txt, "")).unwrap()))),
                 _ => None
             }
         } else {
@@ -119,7 +126,9 @@ pub fn lex(code: String) -> Vec<Token> {
             // println!("{} {}", word, RE.is_match(&word));
             match Token::create(&word.trim_matches(' ')) {
                 Some(t) => {
-                    // println!("{:?}", t);
+                    if env::var("VERBOSE").is_ok() {
+                        println!("{:?}", t);
+                    }
                     if let Token::ScopeStart(_) = t {
                         if let Token::Symbol(_) = out[out.len()-1] {
                             out.push(Token::FuncCall);

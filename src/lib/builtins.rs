@@ -63,9 +63,10 @@ pub fn print(args: &Vec<Obj>) -> Obj {
 
 pub fn load(env_bi: &mut HashMap<String, Obj>) {
     env_bi.insert("print".to_string(), Obj::BuiltinFunc("print".to_string()));
+    env_bi.insert("null".to_string(), Obj::Null);
 }
 
-pub fn find(name: &str) -> fn(&Vec<Obj>) -> Obj {
+pub fn find_func(name: &str) -> fn(&Vec<Obj>) -> Obj {
     match name {
         "print" => print,
         _ => panic!("'{}' not found", name)

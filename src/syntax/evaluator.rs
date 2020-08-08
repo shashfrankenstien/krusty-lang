@@ -147,47 +147,6 @@ impl<'a> NameSpace<'a> {
     }
 
 
-    fn solve_expr(&mut self, exp: &'a Expression) -> Obj {
-        // println!("{:?}", exp);
-        match exp.op {
-            Obj::Operator(Token::Arith(op)) => {
-                match self.solve_arith(op, &exp.elems) {
-                    Ok(res) => res,
-                    Err(e) => panic!("{}", e)
-                } // return
-            },
-            Obj::Operator(Token::Assign) => {
-                // elems should have only 2 members
-                if exp.elems.len() != 2 {
-                    panic!("Illegal assignment");
-                }
-                self.assign(&exp.elems[0], &exp.elems[1]);
-                Obj::Null
-            },
-            Obj::Operator(Token::FuncCall) => {
-                match &exp.elems[0] {
-                    Obj::Object(Token::Symbol(func_name)) => self.eval_func(func_name, &exp.elems[1]),
-                    _ => Obj::Null,
-                }
-            },
-            Obj::Operator(Token::List) => { // These are some List type Operators still unconverted to Obj::List
-                let ret_list: Vec<Obj> = exp.elems.iter().map(|e| {
-                    match e {
-                        Obj::Expr(ex) => self.solve_expr(ex),
-                        Obj::Object(Token::Symbol(s)) => self.get(s).expect("Cannot find variable"),
-                        _ => e.clone()
-                    }
-                }).collect();
-                match ret_list.len() {
-                    0 => Obj::Null,
-                    1 => ret_list[0].clone(),
-                    _ => Obj::List(ret_list)
-                }
-            }
-            _ => exp.clone().to_object()
-        }
-    }
-
     fn eval_func(&mut self, name: &String, args: &'a Obj) -> Obj {
         let args = match args {
             Obj::Expr(e) => Obj::List(vec![self.solve_expr(e)]),
@@ -217,19 +176,84 @@ impl<'a> NameSpace<'a> {
                         }
                     },
                     Obj::BuiltinFunc(f) => {
-                        let f = builtins::find(&f[..]);
-                        let args: Vec<Obj> = args.iter().map(|x| {
+                        let f = builtins::find_func(&f[..]);
+                        let clean_args: Vec<Obj> = args.iter().map(|x| {
                             match x {
                                 // Obj::Expr(ex) => self.solve_expr(&ex),
-                                Obj::Object(Token::Symbol(s)) => self.get(s).unwrap(),
+                                Obj::Object(Token::Symbol(s)) => self.get(&s).unwrap(),
                                 _ => x.clone()
                             }
                         }).collect();
-                        f(&args)
+                        f(&clean_args)
                     }
                     _ => panic!("function '{}' definition error", name)
                 }
             },
+        }
+    }
+
+    fn pick_index(&self, idx: &Token, things: &Obj) -> Obj {
+        // println!("{:?} [{:?}]", things, idx);
+        match (idx, things) {
+            (Token::Number(n), Obj::List(a)) => a[*n as usize].clone(),
+            (Token::Number(n), Obj::Object(Token::Text(a))) => Obj::Object(Token::Text(a.chars().nth(*n as usize).unwrap().to_string())),
+            _ => panic!("cannot index {:?} with {:?}", things, idx)
+        }
+        // Obj::Null
+    }
+
+    fn solve_expr(&mut self, exp: &'a Expression) -> Obj {
+        // println!("{:?}", exp);
+        match &exp.op {
+            Obj::Operator(Token::Assign) => {
+                // elems should have only 2 members
+                if exp.elems.len() != 2 {
+                    panic!("Illegal assignment");
+                }
+                self.assign(&exp.elems[0], &exp.elems[1]);
+                Obj::Null
+            },
+            Obj::Operator(Token::Arith(op)) => {
+                match self.solve_arith(*op, &exp.elems) {
+                    Ok(res) => res,
+                    Err(e) => panic!("{}", e)
+                } // return
+            },
+            Obj::Operator(Token::FuncCall) => {
+                match &exp.elems[0] {
+                    Obj::Object(Token::Symbol(func_name)) => self.eval_func(func_name, &exp.elems[1]),
+                    _ => Obj::Null,
+                }
+            },
+            Obj::Operator(Token::List) => {
+                // These are some List type Operators still unconverted to Obj::List
+                // They are usually deep inside a function definition needing late evaluation
+                let ret_list: Vec<Obj> = exp.elems.iter().map(|e| {
+                    match e {
+                        Obj::Expr(ex) => self.solve_expr(ex),
+                        Obj::Object(Token::Symbol(s)) => self.get(s).expect("Cannot find variable"),
+                        _ => e.clone()
+                    }
+                }).collect();
+                match ret_list.len() {
+                    // We also unwrap these late evaluated lists in case it has 0 or 1 elements
+                    0 => Obj::Null,
+                    1 => ret_list[0].clone(),
+                    _ => Obj::List(ret_list)
+                }
+            },
+            Obj::SuffixOperator(Token::Index(idx)) => {
+                if exp.elems.len() != 1 {
+                    panic!("Illegal index operation");
+                }
+                match &exp.elems[0] {
+                    Obj::Object(Token::Symbol(s)) => {
+                        self.pick_index(&(**idx), &self.get(&s).expect("variable not found"))
+                    },
+                    _ => self.pick_index(&(**idx), &exp.elems[0]),
+                }
+            }
+            _ => exp.clone().to_object()
         }
     }
 }

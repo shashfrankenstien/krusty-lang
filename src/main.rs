@@ -40,7 +40,7 @@ fn main() {
         if env::var("VERBOSE").is_ok() {
             println!("FINAL {:?}", env);
         }
-        println!("{}", _vo);
+        // println!("{}", _vo);
     } else {
         panic!("Error: repl is not ready yet!")
     }
