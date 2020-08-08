@@ -73,7 +73,6 @@ impl Expression {
             if self.elems.len() == 2 {
                 let body = self.elems.pop().unwrap();
                 let args = self.elems.pop().unwrap();
-                println!("{:?}", args);
                 // Obj::Func(FuncDef {args, body})
                 match args {
                     Obj::List(_) => (),

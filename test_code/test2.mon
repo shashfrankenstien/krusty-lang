@@ -26,10 +26,9 @@ y = (x null "mom");
 
 print("y =", y);
 
-pprint = (x) => {print(x)};
 
-pprint(y[0]);
-pprint(y[1]);
-pprint(y[2]);
+print(y[0]);
+print(y[1]);
+print(y[2]);
 
-print(1, (1,2)[0], 1);
+print(1, (1,2)[1], 1);

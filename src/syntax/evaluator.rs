@@ -39,7 +39,7 @@ impl<'a> NameSpace<'a> {
         }
     }
 
-    pub fn run(&mut self, elist: &'a ExprList) -> Obj {
+    pub fn run(&mut self, elist: &ExprList) -> Obj {
         let mut return_val = Obj::Null;
         for (_i, o) in elist.exprs.iter().enumerate() {
             return_val = self.solve_expr(o);
@@ -69,7 +69,7 @@ impl<'a> NameSpace<'a> {
         self.vars.insert(key, value);
     }
 
-    fn assign(&mut self, key: &'a Obj, value: &'a Obj) {
+    fn assign(&mut self, key: &Obj, value: &Obj) {
         if let Obj::Object(Token::Symbol(var)) = key {
             if env::var("VERBOSE").is_ok() {
                 println!("assign {:?}", var);
@@ -111,7 +111,7 @@ impl<'a> NameSpace<'a> {
     }
 
 
-    fn solve_arith(&mut self, op: char, elems: &'a Vec<Obj>) ->Result<Obj, String> {
+    fn solve_arith(&mut self, op: char, elems: &Vec<Obj>) ->Result<Obj, String> {
         // elems should have only 2 members
         if elems.len() > 2 {
             return Err("Illegal arithmetic operation".to_string());
@@ -147,7 +147,7 @@ impl<'a> NameSpace<'a> {
     }
 
 
-    fn eval_func(&mut self, name: &String, args: &'a Obj) -> Obj {
+    fn eval_func(&mut self, name: &String, args: &Obj) -> Obj {
         let args = match args {
             Obj::Expr(e) => Obj::List(vec![self.solve_expr(e)]),
             _ => args.clone()
@@ -179,7 +179,7 @@ impl<'a> NameSpace<'a> {
                         let f = builtins::find_func(&f[..]);
                         let clean_args: Vec<Obj> = args.iter().map(|x| {
                             match x {
-                                // Obj::Expr(ex) => self.solve_expr(&ex),
+                                Obj::Expr(ex) => self.solve_expr(&ex),
                                 Obj::Object(Token::Symbol(s)) => self.get(&s).unwrap(),
                                 _ => x.clone()
                             }
@@ -202,7 +202,7 @@ impl<'a> NameSpace<'a> {
         // Obj::Null
     }
 
-    fn solve_expr(&mut self, exp: &'a Expression) -> Obj {
+    fn solve_expr(&mut self, exp: &Expression) -> Obj {
         // println!("{:?}", exp);
         match &exp.op {
             Obj::Operator(Token::Assign) => {

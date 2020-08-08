@@ -35,10 +35,10 @@ fn main() {
         // for t in &tree.exprs {
         //     println!("{:?}", t);
         // }
-        let mut env = NameSpace::new(None);
-        let _vo = env.run(&tree);
+        let mut environment = NameSpace::new(None);
+        let _vo = environment.run(&tree);
         if env::var("VERBOSE").is_ok() {
-            println!("FINAL {:?}", env);
+            println!("FINAL {:?}", environment);
         }
         // println!("{}", _vo);
     } else {
