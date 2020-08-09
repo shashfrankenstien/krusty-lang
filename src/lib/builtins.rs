@@ -42,7 +42,7 @@ impl fmt::Display for ExprList {
 
 
 
-pub fn print(args: &Vec<Obj>) -> Obj {
+pub fn _print(args: &Vec<Obj>) -> Obj {
     match args.len() {
         0 => println!(""),
         _ => {
@@ -63,16 +63,37 @@ pub fn print(args: &Vec<Obj>) -> Obj {
 }
 
 
+pub fn _type(args: &Vec<Obj>) -> Obj {
+    if args.len() != 1 {
+        panic!("'type' function takes only one argument")
+    }
+    match args[0] {
+        Obj::Object(Token::Text(_)) => Obj::Object(Token::Text("<Text>".to_string())),
+        Obj::Object(Token::Number(_)) => Obj::Object(Token::Text("<Number>".to_string())),
+        Obj::Func(_) => Obj::Object(Token::Text("<Func>".to_string())),
+        Obj::BuiltinFunc(_) => Obj::Object(Token::Text("<BuiltinFunc>".to_string())),
+        Obj::List(_) => Obj::Object(Token::Text("<List>".to_string())),
+        Obj::Bool(_) => Obj::Object(Token::Text("<Bool>".to_string())),
+        Obj::Expr(_) => Obj::Object(Token::Text("<Expr>".to_string())),
+        Obj::Group(_) => Obj::Object(Token::Text("<ExprGroup>".to_string())),
+        Obj::Null => Obj::Object(Token::Text("<Null>".to_string())),
+        _ => Obj::Object(Token::Text("<Type Not Found>".to_string()))
+    }
+}
+
+
 pub fn load(env_bi: &mut HashMap<String, Obj>) {
     env_bi.insert("null".to_string(), Obj::Null);
     env_bi.insert("true".to_string(), Obj::Bool(true));
     env_bi.insert("false".to_string(), Obj::Bool(false));
     env_bi.insert("print".to_string(), Obj::BuiltinFunc("print".to_string()));
+    env_bi.insert("type".to_string(), Obj::BuiltinFunc("type".to_string()));
 }
 
 pub fn find_func(name: &str) -> fn(&Vec<Obj>) -> Obj {
     match name {
-        "print" => print,
+        "print" => _print,
+        "type" => _type,
         _ => panic!("'{}' not found", name)
     }
 }

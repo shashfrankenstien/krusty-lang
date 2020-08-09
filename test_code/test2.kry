@@ -36,3 +36,11 @@ print(y[1]);
 print(y[2]);
 
 print(1, (1,2)[1], 1);
+
+print("------ types -----");
+
+print(type(y));
+print(type(y[0]));
+print(type(y[1]));
+print(type("shashnak"));
+print(type(last_func("shashank")));
