@@ -35,7 +35,7 @@ lazy_static! {
         r"^=>$", //funcDef - 7
         r"^,$", //List - 8
         r"^=$", //assign - 9
-        r"^#\S*$", //comment - 10
+        r"^#.*$", //comment - 10
         r"^(\r\n|\r|\n)$", //newline - 11
         r#"^\[.*\]$"#, //index operation - 12
     ]).unwrap();
