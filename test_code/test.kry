@@ -36,3 +36,15 @@ k(10);
 ()=>print(x);
 
 # Hello();
+print(a[0]);
+
+
+add2 = (x) => {x + 2;};
+print( "add2", ( add2(5) ) );
+
+comp = 7.15 == add2(5);
+print(comp);
+
+# forEach = (list, len, f) => {
+
+# }

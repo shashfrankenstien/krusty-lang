@@ -5,18 +5,6 @@ use crate::syntax::parser::{Obj, Expression, ExprList};
 use crate::syntax::lexer::Token;
 use crate::lib::builtins;
 
-fn _arith_operate(a:Option<f64>, b:f64, op:char) -> Option<f64> {
-    if env::var("VERBOSE").is_ok() {
-        println!("arith {:?} {} {}", a, op, b);
-    }
-    match (a, op) {
-        (Some(_a), '+') =>Some(_a+b),
-        (Some(_a), '-') =>Some(_a-b),
-        (Some(_a), '*') =>Some(_a*b),
-        (Some(_a), '/') =>Some(_a/b),
-        _ => Some(b)
-    }
-}
 
 
 #[derive(Debug)]
@@ -69,42 +57,23 @@ impl<'a> NameSpace<'a> {
         self.vars.insert(key, value);
     }
 
+    fn resolve(&mut self, o: &Obj) -> Obj {
+        match o {
+            Obj::Expr(ex) => self.solve_expr(ex),
+            Obj::Object(Token::Symbol(s)) => self.get(s).unwrap(),
+            Obj::List(l) => Obj::List(l.into_iter().map(|x| self.resolve(x)).collect()),
+            Obj::Group(_) => Obj::Null, // TODO
+            _ => o.clone()
+        }
+    }
+
     fn assign(&mut self, key: &Obj, value: &Obj) {
         if let Obj::Object(Token::Symbol(var)) = key {
             if env::var("VERBOSE").is_ok() {
                 println!("assign {:?}", var);
             }
-            match value {
-                Obj::Object(Token::Number(_)) | Obj::Object(Token::Text(_)) => {
-                    self.set(var.to_string(), value.clone());
-                },
-                Obj::Object(Token::Symbol(s)) => {
-                    let mo = self.get(s).unwrap();
-                    self.set(var.to_string(), mo);
-                },
-                Obj::Func(_) => {
-                    self.set(var.to_string(), value.clone());
-                },
-                Obj::List(l) => {
-                    let solved_list = l.into_iter().map(|x| {
-                        match x {
-                            Obj::Expr(ex) => self.solve_expr(ex),
-                            Obj::Object(Token::Symbol(s)) => self.get(s).unwrap(),
-                            _ => x.clone()
-                        }
-                    }).collect();
-                    self.set(var.to_string(), Obj::List(solved_list));
-                },
-                Obj::Expr(x) => {
-                    let res = self.solve_expr(x);
-                    self.set(var.to_string(), res);
-                },
-                Obj::Group(_) => {
-                    self.set(var.to_string(), Obj::Null);
-                },
-                _ => panic!("Illegal assignment - {:?}", value),
-            };
-            //
+            let val = self.resolve(value);
+            self.set(var.to_string(), val);
         } else {
             panic!("LHS is not a valid symbol");
         }
@@ -112,38 +81,44 @@ impl<'a> NameSpace<'a> {
 
 
     fn solve_arith(&mut self, op: char, elems: &Vec<Obj>) ->Result<Obj, String> {
-        // elems should have only 2 members
-        if elems.len() > 2 {
-            return Err("Illegal arithmetic operation".to_string());
-        }
         let mut res: Option<f64> = None;//f64 = if "+-".contains(op) {0.0} else {1.0};
         for e in elems.iter() {
-            // println!("{:?} {:?}", op, e);
-            match e {
+            match self.resolve(e) {
                 Obj::Object(Token::Number(n)) => {
-                    res = _arith_operate(res, *n, op);
-                },
-                Obj::Object(Token::Symbol(s)) => {
-                    let val = self.get(s).unwrap();
-                    match val {
-                        Obj::Object(Token::Number(n)) => {
-                            res = _arith_operate(res, n, op);
-                        },
-                        _ => {return Err(format!("Cannot perform Arith on {:?}", e));}
+                    if env::var("VERBOSE").is_ok() {
+                        println!("arith {:?} {} {}", res, op, n);
                     }
-                },
-                Obj::Expr(x) => {
-                    match self.solve_expr(x) {
-                        Obj::Object(Token::Number(n)) => {
-                            res = _arith_operate(res, n, op);
-                        },
-                        _ => {return Err(format!("Cannot perform Arith on {:?}", x));}
+                    res = match (res, op) {
+                        (Some(_a), '+') =>Some(_a+n),
+                        (Some(_a), '-') =>Some(_a-n),
+                        (Some(_a), '*') =>Some(_a*n),
+                        (Some(_a), '/') =>Some(_a/n),
+                        _ => Some(n)
                     };
-                }
+                },
                 _ => return Err(format!("Cannot perform Arith on {:?}", e))
             }
         }
         return Ok(Obj::Object(Token::Number(res.expect("Arith error")))) //return
+    }
+
+
+    fn solve_comparison(&mut self, op: &String, elems: &Vec<Obj>) ->Result<Obj, String> {
+        // this function uses Rust's PartialEq and PartialOrd to do comparison
+        let vals: Vec<Obj> = elems.iter().map(|x| self.resolve(x)).collect();
+        // println!("{} ", builtins::_type(&vec![vals[0].clone()]) == builtins::_type(&vec![vals[1].clone()]));
+        if env::var("VERBOSE").is_ok() {
+            println!("compare {} {:?}", op, vals);
+        }
+        match &op[..] {
+            "==" => Ok(Obj::Bool(vals[0]==vals[1])),
+            "!=" => Ok(Obj::Bool(vals[0]!=vals[1])),
+            ">" => Ok(Obj::Bool(vals[0]>vals[1])),
+            "<" => Ok(Obj::Bool(vals[0]<vals[1])),
+            ">=" => Ok(Obj::Bool(vals[0]>=vals[1])),
+            "<=" => Ok(Obj::Bool(vals[0]<=vals[1])),
+            _ => Err("Unsupported operator".to_string())
+        }
     }
 
 
@@ -177,13 +152,7 @@ impl<'a> NameSpace<'a> {
                     },
                     Obj::BuiltinFunc(f) => {
                         let f = builtins::find_func(&f[..]);
-                        let clean_args: Vec<Obj> = args.iter().map(|x| {
-                            match x {
-                                Obj::Expr(ex) => self.solve_expr(&ex),
-                                Obj::Object(Token::Symbol(s)) => self.get(&s).unwrap(),
-                                _ => x.clone()
-                            }
-                        }).collect();
+                        let clean_args: Vec<Obj> = args.iter().map(|x| self.resolve(x)).collect();
                         f(&clean_args)
                     }
                     _ => panic!("function '{}' definition error", name)
@@ -214,7 +183,21 @@ impl<'a> NameSpace<'a> {
                 Obj::Null
             },
             Obj::Operator(Token::Arith(op)) => {
+                // elems should have only 2 members
+                if exp.elems.len() != 2 {
+                    panic!("Illegal arithmetic operation");
+                }
                 match self.solve_arith(*op, &exp.elems) {
+                    Ok(res) => res,
+                    Err(e) => panic!("{}", e)
+                } // return
+            },
+            Obj::Operator(Token::Comparison(op)) => {
+                // elems should have only 2 members
+                if exp.elems.len() != 2 {
+                    panic!("Illegal comparison operation");
+                }
+                match self.solve_comparison(op, &exp.elems) {
                     Ok(res) => res,
                     Err(e) => panic!("{}", e)
                 } // return
@@ -226,15 +209,9 @@ impl<'a> NameSpace<'a> {
                 }
             },
             Obj::Operator(Token::List) => {
-                // These are some List type Operators still unconverted to Obj::List
+                // These are some List type Expressions still unconverted to Obj::List
                 // They are usually deep inside a function definition needing late evaluation
-                let ret_list: Vec<Obj> = exp.elems.iter().map(|e| {
-                    match e {
-                        Obj::Expr(ex) => self.solve_expr(ex),
-                        Obj::Object(Token::Symbol(s)) => self.get(s).expect("Cannot find variable"),
-                        _ => e.clone()
-                    }
-                }).collect();
+                let ret_list: Vec<Obj> = exp.elems.iter().map(|e| self.resolve(e)).collect();
                 match ret_list.len() {
                     // We also unwrap these late evaluated lists in case it has 0 or 1 elements
                     0 => Obj::Null,
@@ -246,12 +223,8 @@ impl<'a> NameSpace<'a> {
                 if exp.elems.len() != 1 {
                     panic!("Illegal index operation");
                 }
-                match &exp.elems[0] {
-                    Obj::Object(Token::Symbol(s)) => {
-                        self.pick_index(&(**idx), &self.get(&s).expect("variable not found"))
-                    },
-                    _ => self.pick_index(&(**idx), &exp.elems[0]),
-                }
+                let val = self.resolve(&exp.elems[0]);
+                self.pick_index(idx, &val)
             }
             _ => exp.clone().to_object()
         }

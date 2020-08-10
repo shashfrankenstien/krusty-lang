@@ -3,7 +3,7 @@ use std::env;
 use crate::syntax::lexer;
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct FuncDef {
     pub args: Obj,
     pub body: Obj
@@ -11,8 +11,10 @@ pub struct FuncDef {
 
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum Obj {
+    Null,
+    Bool(bool),
     Object(lexer::Token),
     Operator(lexer::Token),
     SuffixOperator(lexer::Token),
@@ -22,8 +24,6 @@ pub enum Obj {
     // Group(Vec<Obj>),
     List(Vec<Obj>),
     Func(Box<FuncDef>),
-    Null,
-    Bool(bool),
     BuiltinFunc(String),
 }
 
@@ -32,7 +32,7 @@ impl Obj {
         use lexer::Token;
         match tok {
             Token::Symbol(_) | Token::Number(_) | Token::Text(_) => Obj::Object(tok.clone()),
-            Token::Arith(_) | Token::FuncDef | Token::Assign | Token::List | Token::FuncCall => Obj::Operator(tok.clone()),
+            Token::Arith(_) | Token::Comparison(_) | Token::FuncDef | Token::Assign | Token::List | Token::FuncCall => Obj::Operator(tok.clone()),
             Token::Index(_) => Obj::SuffixOperator(tok.clone()),
             Token::ScopeStart(s) => Obj::Scope(*s),
             _ => Obj::Null
@@ -50,7 +50,7 @@ impl Obj {
 
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct Expression {
     pub op: Obj,
     pub elems: Vec<Obj>,
@@ -196,7 +196,7 @@ impl Expression {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct ExprList {
     pub exprs: Vec<Expression>,
 }

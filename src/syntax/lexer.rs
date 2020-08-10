@@ -4,12 +4,13 @@ use regex::Regex;
 use lazy_static::lazy_static;
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum Token {
     Number(f64),
     Text(String),
     Symbol(String),
     Arith(char),
+    Comparison(String),
     ScopeStart(char),
     ScopeEnd(char),
     Separator,
@@ -38,6 +39,7 @@ lazy_static! {
         r"^#.*$", //comment - 10
         r"^(\r\n|\r|\n)$", //newline - 11
         r#"^\[.*\]$"#, //index operation - 12
+        r#"^(==|!=|<|<=|>|>=)$"#, //comparison operation - 13
     ]).unwrap();
 
     static ref RE_PASS: RegexSet = RegexSet::new(&[
@@ -73,6 +75,7 @@ impl Token {
                 10 => Some(Token::_Comment),
                 11 => Some(Token::_NewLine),
                 12 => Some(Token::Index(Box::new(Token::create(&RE_SQ_BRACKETS.replace_all(txt, "")).unwrap()))),
+                13 => Some(Token::Comparison(txt.to_string())),
                 _ => None
             }
         } else {
