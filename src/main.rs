@@ -1,8 +1,9 @@
 use std::io::Read;
 use std::fs::File;
-use std::env;
+use std::env; // required for print_verbose! macro
 
-
+#[macro_use]
+pub mod macros;
 
 mod syntax {
     pub mod lexer;
@@ -37,9 +38,7 @@ fn main() {
         // }
         let mut environment = NameSpace::new(None);
         let _vo = environment.run(&tree);
-        if env::var("VERBOSE").is_ok() {
-            println!("FINAL {:?}", environment);
-        }
+        print_verbose!("FINAL {:?}", environment);
         // println!("{}", _vo);
     } else {
         panic!("Error: repl is not ready yet!")

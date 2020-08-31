@@ -6,7 +6,7 @@ last_func = (name) => {
     print(x);
     x = 10;
     print("<<< leaving last_func");
-    1 + 2; # return value
+    x + 2; # return value
 };
 
 x = -1, 6;
@@ -16,8 +16,10 @@ print(last_func("shashank"));
 print("------ math -----");
 x = 1;
 print("2 * 256 =", (2 * 256));
+k = () => {print(10)};
+k();
 k = (a) => {
-    (a + (2 * 10) + (10 - 2)), 45; # return a list
+    a + (2 * 10) + (10 - 2);
 };
 print("k(10.5) = ", (k(10.5)) );
 
@@ -35,7 +37,7 @@ print(y[0]);
 print(y[1]);
 print(y[2]);
 
-print(1, (1,2)[1], 1);
+print(1, (1,2)[1], 1); #issue
 
 print("------ types -----");
 
@@ -43,7 +45,7 @@ print(type(y));
 print(type(y[0]));
 print(type("shashank"));
 print(type(122.5));
-print(type(k));
+# print(type(k));
 
 
 
@@ -54,8 +56,8 @@ x = 2.2;
 f = ()=> {2;};
 
 print("100 == 100", (100 == 100));
-print("4 > f()", (4 > f()));
-print("2 >= x", (2 >= x));
+print("4 > f()", (4 > f())); #issue
+print("2 >= x", (2 >= x)); #issue
 print("true < false", (true < false));
 print("Shashank != y", ("Shashank" != y));
 

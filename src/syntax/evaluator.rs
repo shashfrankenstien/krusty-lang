@@ -28,11 +28,13 @@ impl<'a> NameSpace<'a> {
     }
 
     pub fn run(&mut self, elist: &ExprList) -> Obj {
-        let mut return_val = Obj::Null;
         for (_i, o) in elist.exprs.iter().enumerate() {
-            return_val = self.solve_expr(o);
+            let return_val = self.solve_expr(o);
+            if let Obj::Operator(Token::FuncReturn) = o.op {
+                return return_val
+            }
         }
-        return_val
+        Obj::Null
     }
 
 
@@ -69,9 +71,7 @@ impl<'a> NameSpace<'a> {
 
     fn assign(&mut self, key: &Obj, value: &Obj) {
         if let Obj::Object(Token::Symbol(var)) = key {
-            if env::var("VERBOSE").is_ok() {
-                println!("assign {:?}", var);
-            }
+            print_verbose!("assign {:?}", var);
             let val = self.resolve(value);
             self.set(var.to_string(), val);
         } else {
@@ -85,9 +85,7 @@ impl<'a> NameSpace<'a> {
         for e in elems.iter() {
             match self.resolve(e) {
                 Obj::Object(Token::Number(n)) => {
-                    if env::var("VERBOSE").is_ok() {
-                        println!("arith {:?} {} {}", res, op, n);
-                    }
+                    print_verbose!("arith {:?} {} {}", res, op, n);
                     res = match (res, op) {
                         (Some(_a), '+') =>Some(_a+n),
                         (Some(_a), '-') =>Some(_a-n),
@@ -107,9 +105,7 @@ impl<'a> NameSpace<'a> {
         // this function uses Rust's PartialEq and PartialOrd to do comparison
         let vals: Vec<Obj> = elems.iter().map(|x| self.resolve(x)).collect();
         // println!("{} ", builtins::_type(&vec![vals[0].clone()]) == builtins::_type(&vec![vals[1].clone()]));
-        if env::var("VERBOSE").is_ok() {
-            println!("compare {} {:?}", op, vals);
-        }
+        print_verbose!("compare {} {:?}", op, vals);
         match &op[..] {
             "==" => Ok(Obj::Bool(vals[0]==vals[1])),
             "!=" => Ok(Obj::Bool(vals[0]!=vals[1])),
@@ -141,9 +137,7 @@ impl<'a> NameSpace<'a> {
                             for (k,v) in req_args.iter().zip(args.iter()) {
                                 exec_env.assign(&k, &v);
                             }
-                            if env::var("VERBOSE").is_ok() {
-                                println!("CALL {} {:?}", name, f.body);
-                            }
+                            print_verbose!("CALL {} {:?}", name, f.body);
                             match f.body { // return function result
                                 Obj::Group(elist) => exec_env.run(&elist),
                                 _ => panic!("function '{}' definition error", name),
@@ -206,6 +200,15 @@ impl<'a> NameSpace<'a> {
                 match &exp.elems[0] {
                     Obj::Object(Token::Symbol(func_name)) => self.eval_func(func_name, &exp.elems[1]),
                     _ => Obj::Null,
+                }
+            },
+            Obj::Operator(Token::FuncReturn) => { // will only return a list type object??
+                let ret_list: Vec<Obj> = exp.elems.iter().map(|e| self.resolve(e)).collect();
+                match ret_list.len() {
+                    // We also unwrap these late evaluated lists in case it has 0 or 1 elements
+                    0 => Obj::Null,
+                    1 => ret_list[0].clone(),
+                    _ => Obj::List(ret_list)
                 }
             },
             Obj::Operator(Token::List) => {

@@ -1,4 +1,4 @@
-use std::env;
+use std::env; // required for print_verbose! macro
 use regex::RegexSet;
 use regex::Regex;
 use lazy_static::lazy_static;
@@ -16,6 +16,7 @@ pub enum Token {
     Separator,
     FuncDef,
     FuncCall,
+    FuncReturn,
     List,
     Index(Box<Token>),
     Assign,
@@ -83,21 +84,6 @@ impl Token {
         }
     }
 
-    pub fn is_stmt_end_token(&self) -> bool {
-        match self {
-            Token::Separator => true,
-            // lexer::Token::ScopeEnd(_) => true,
-            _ => false
-        }
-    }
-
-    pub fn is_scope_end_token(&self) -> bool {
-        match self {
-            Token::ScopeEnd(_) => true,
-            _ => false
-        }
-    }
-
     pub fn is_newline_token(&self) -> bool {
         match self {
             Token::_NewLine => true,
@@ -118,11 +104,27 @@ impl Token {
     }
 }
 
+fn push_tweaked(tkn: Token, dest: &mut Vec<Token>) {
+    match &tkn {
+        Token::ScopeStart(_) => {
+            if let Token::Symbol(_) = dest[dest.len()-1] { // symbol + scope start = func call
+                dest.push(Token::FuncCall);
+            }
+        },
+        Token::Symbol(s) if s == "ret" => {
+            dest.push(Token::FuncReturn);
+            return
+        },
+        _ => ()
+    };
+    dest.push(tkn);
+}
+
 
 pub fn lex(code: String) -> Vec<Token> {
 
     let mut word = String::new();
-    let mut out = Vec::new();
+    let mut out: Vec<Token> = Vec::new();
     for c in code.chars() {
         word.push(c);
         if !RE.is_match(&word.trim_matches(' ')) && (word.trim_matches(' ')!="") {
@@ -130,15 +132,8 @@ pub fn lex(code: String) -> Vec<Token> {
             // println!("{} {}", word, RE.is_match(&word));
             match Token::create(&word.trim_matches(' ')) {
                 Some(t) => {
-                    if env::var("VERBOSE").is_ok() {
-                        println!("{:?}", t);
-                    }
-                    if let Token::ScopeStart(_) = t {
-                        if let Token::Symbol(_) = out[out.len()-1] {
-                            out.push(Token::FuncCall);
-                        }
-                    }
-                    out.push(t);
+                    print_verbose!("{:?}", t);
+                    push_tweaked(t, &mut out);
                     word.clear();
                 },
                 _ => ()
@@ -148,16 +143,10 @@ pub fn lex(code: String) -> Vec<Token> {
     }
     if word.len() != 0 { // check remainder
         match Token::create(&word.trim_matches(' ')) {
-            Some(t) => {
-                if let Token::ScopeStart(_) = t {
-                    if let Token::Symbol(_) = out[out.len()-1] {
-                        out.push(Token::FuncCall);
-                    }
-                }
-                out.push(t);
-            },
+            Some(t) => push_tweaked(t, &mut out),
             _ => ()
         }
     }
+    print_verbose!("\\mm/      lex done!!!");
     out
 }
