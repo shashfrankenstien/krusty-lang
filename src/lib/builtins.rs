@@ -1,7 +1,7 @@
 use std::fmt;
 use std::collections::HashMap;
 use crate::syntax::lexer::Token;
-use crate::syntax::parser::{Obj, ExprList};
+use crate::syntax::parser::Obj;
 
 
 impl fmt::Display for Token {
@@ -34,11 +34,11 @@ impl fmt::Display for Obj {
     }
 }
 
-impl fmt::Display for ExprList {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "ExprList({:?})", self.exprs)
-    }
-}
+// impl fmt::Display for ExprList {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         write!(f, "ExprList({:?})", self.exprs)
+//     }
+// }
 
 
 

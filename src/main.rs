@@ -31,9 +31,9 @@ fn main() {
         let mut code = String::new();
         f.read_to_string(&mut code).expect("Can't read this");
 
-        let tokens = lexer::lex(code);
-        let tree = parser::parse(tokens);
-        // for t in &tree.exprs {
+        let mut tokens = lexer::lex(code);
+        let tree = parser::parse(&mut tokens);
+        // for t in &tree {
         //     println!("{:?}", t);
         // }
         let mut environment = NameSpace::new(None);

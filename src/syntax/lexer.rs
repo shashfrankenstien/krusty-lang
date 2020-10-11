@@ -104,6 +104,74 @@ impl Token {
     }
 }
 
+
+
+
+#[derive(Debug)]
+pub struct Scanner {
+    tokens: Vec<Token>,
+    _pointer: usize,
+}
+
+impl Scanner {
+    pub fn new(tokens: &Vec<Token>) -> Scanner {
+        Scanner {
+            tokens:tokens.to_vec(),
+            _pointer:0,
+        }
+    }
+    fn _valid_index(&self, i: usize) -> bool {
+        i < self.tokens.len()
+    }
+    pub fn inc(&mut self) {
+        self._pointer += 1;
+    }
+    // fn dec(&mut self) {
+    //     self._pointer -= 1;
+    // }
+
+    pub fn current_idx(&self) -> usize {
+        self._pointer
+    }
+
+    pub fn get_token_at(&self, i: usize) -> Option<&Token> {
+        if self._valid_index(i) {
+            Some(&self.tokens[i])
+        } else {
+            None
+        }
+    }
+
+    pub fn get_token(&self) -> Option<&Token> {
+        self.get_token_at(self._pointer)
+    }
+
+    pub fn get_next(&self) -> Option<&Token> {
+        self.get_token_at(self._pointer + 1)
+    }
+    // fn get_prev(&self) -> Option<&Token> {
+    //     self.get_token_at(self._pointer - 1)
+    // }
+
+    pub fn current_is(&self, other: &Option<Token>) -> bool {
+        let tkn = self.get_token();
+        match other {
+            Some(t) => Some(t)==tkn,
+            None => tkn.is_none()
+        }
+    }
+
+    pub fn next_is(&self, other: &Option<Token>) -> bool {
+        let tkn = self.get_next();
+        match other {
+            Some(t) => Some(t)==tkn,
+            None => tkn.is_none()
+        }
+    }
+
+}
+
+
 fn push_tweaked(tkn: Token, dest: &mut Vec<Token>) {
     match &tkn {
         Token::ScopeStart(_) => {
@@ -121,7 +189,8 @@ fn push_tweaked(tkn: Token, dest: &mut Vec<Token>) {
 }
 
 
-pub fn lex(code: String) -> Vec<Token> {
+
+pub fn lex(code: String) -> Scanner {
 
     let mut word = String::new();
     let mut out: Vec<Token> = Vec::new();
@@ -148,5 +217,5 @@ pub fn lex(code: String) -> Vec<Token> {
         }
     }
     print_verbose!("\\mm/      lex done!!!");
-    out
+    Scanner::new(&out)
 }

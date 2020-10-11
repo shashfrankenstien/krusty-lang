@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::env;
 
-use crate::syntax::parser::{Obj, Expression, ExprList};
+use crate::syntax::parser::{Obj, Expression};
 use crate::syntax::lexer::Token;
 use crate::lib::builtins;
 
@@ -27,11 +27,15 @@ impl<'a> NameSpace<'a> {
         }
     }
 
-    pub fn run(&mut self, elist: &ExprList) -> Obj {
-        for (_i, o) in elist.exprs.iter().enumerate() {
+    pub fn run(&mut self, elist: &Vec<Expression>) -> Obj {
+        for (_i, o) in elist.iter().enumerate() {
             let return_val = self.solve_expr(o);
             if let Obj::Operator(Token::FuncReturn) = o.op {
-                return return_val
+                if let None = self.parent {
+                    panic!("cannot use return here!")
+                } else {
+                    return return_val
+                }
             }
         }
         Obj::Null
@@ -82,20 +86,27 @@ impl<'a> NameSpace<'a> {
 
     fn solve_arith(&mut self, op: char, elems: &Vec<Obj>) ->Result<Obj, String> {
         let mut res: Option<f64> = None;//f64 = if "+-".contains(op) {0.0} else {1.0};
+
         for e in elems.iter() {
-            match self.resolve(e) {
-                Obj::Object(Token::Number(n)) => {
-                    print_verbose!("arith {:?} {} {}", res, op, n);
-                    res = match (res, op) {
-                        (Some(_a), '+') =>Some(_a+n),
-                        (Some(_a), '-') =>Some(_a-n),
-                        (Some(_a), '*') =>Some(_a*n),
-                        (Some(_a), '/') =>Some(_a/n),
-                        _ => Some(n)
-                    };
+            let num = match self.resolve(e) {
+                Obj::Object(Token::Number(n)) => n,
+                Obj::List(l) if l.len()==1 => { // single element list - expressions enclosed in ()
+                    match l[0] {
+                        Obj::Object(Token::Number(n)) => n,
+                        _ => return Err(format!("Cannot perform Arith on {:?}", e))
+                    }
                 },
                 _ => return Err(format!("Cannot perform Arith on {:?}", e))
-            }
+            };
+
+            print_verbose!("arith {:?} {} {}", res, op, num);
+            res = match (res, op) {
+                (Some(_a), '+') =>Some(_a+num),
+                (Some(_a), '-') =>Some(_a-num),
+                (Some(_a), '*') =>Some(_a*num),
+                (Some(_a), '/') =>Some(_a/num),
+                _ => Some(num)
+            };
         }
         return Ok(Obj::Object(Token::Number(res.expect("Arith error")))) //return
     }
@@ -119,6 +130,7 @@ impl<'a> NameSpace<'a> {
 
 
     fn eval_func(&mut self, name: &String, args: &Obj) -> Obj {
+        // println!("<F> {:?}", args);
         let args = match args {
             Obj::Expr(e) => Obj::List(vec![self.solve_expr(e)]),
             _ => args.clone()
@@ -166,7 +178,7 @@ impl<'a> NameSpace<'a> {
     }
 
     fn solve_expr(&mut self, exp: &Expression) -> Obj {
-        // println!("{:?}", exp);
+        // println!("<E> {:?}", exp);
         match &exp.op {
             Obj::Operator(Token::Assign) => {
                 // elems should have only 2 members

@@ -18,8 +18,8 @@ pub enum Obj {
     Operator(lexer::Token),
     SuffixOperator(lexer::Token),
     Scope(char),
-    Expr(Box<Expression>),
-    Group(ExprList),
+    Expr(Box<Expression>), // use Box since Expression has Obj type members (recursive)
+    Group(Vec<Expression>),
     // Group(Vec<Obj>),
     List(Vec<Obj>),
     Func(Box<FuncDef>),
@@ -27,7 +27,7 @@ pub enum Obj {
 }
 
 impl Obj {
-    fn find(tok: &lexer::Token) -> Obj {
+    fn categorize(tok: &lexer::Token) -> Obj {
         use lexer::Token;
         match tok {
             Token::Symbol(_)
@@ -78,6 +78,9 @@ impl Expression {
     }
 
     pub fn to_object(mut self) -> Obj {
+        if self.op == Obj::Null && self.elems.len() == 1 {
+            self.elems.pop().unwrap()
+        } else
         if let Obj::Operator(lexer::Token::List) | Obj::Null = self.op {
             Obj::List(self.elems)
         } else
@@ -103,19 +106,72 @@ impl Expression {
         }
     }
 
-    fn parse(&mut self, tokens: &mut Scanner, end: Option<lexer::Token>) {
+
+    fn parse_scope(tokens: &mut lexer::Scanner, end: Option<lexer::Token>) -> Vec<Expression> {
+        let mut output: Vec<Expression> = Vec::new();
+        loop {
+            print_verbose!(">> ps {:?} {}", tokens.get_next(), tokens.current_idx());
+
+            if tokens.current_is(&end) |
+                tokens.current_is(&None) {
+                // print_verbose!(">> ps EXIT {:?}", output);
+                // tokens.inc();
+                break;
+            } else if tokens.current_is(&Some(lexer::Token::_NewLine)) {
+                tokens.inc();
+                continue;
+            }
+
+            let mut exp = Expression::new();
+            exp.parse(tokens, Some(lexer::Token::Separator));
+            print_verbose!("* {:?} {:?}", exp, tokens.get_token());
+            if exp.elems.len()>0 {
+                output.push(exp);
+            }
+
+        }
+        output
+    }
+
+    fn _list_sep_exists(tokens: &lexer::Scanner, before: lexer::Token) -> bool {
+        let mut idx = tokens.current_idx();
+        let mut found = false;
+        loop {
+            let tkn = tokens.get_token_at(idx);
+            match tkn {
+                Some(t) => {
+                    if *t == before || *t == lexer::Token::Separator {
+                        break;
+                    }
+                    else if *t == lexer::Token::List {
+                        found = true;
+                        break;
+                    }
+                },
+                None => break // end reached
+            }
+            idx += 1;
+        }
+        found
+    }
+
+    fn parse(&mut self, tokens: &mut lexer::Scanner, end: Option<lexer::Token>) {
         // println!("-->");
         // println!("{:?}", tokens);
         loop {
             let tok = tokens.get_token();
-            if tokens.current_is(&end) {
+
+
+            if tokens.current_is(&end) || tokens.current_is(&None) {
+                tokens.inc();
                 break; // If required end is reached, don't increment
-            } else if tok.is_none() || tokens.current_is(&Some(lexer::Token::Separator)) {
-                tokens.inc(); // Generic None and Separator will need incrementing
-                break;
             }
+            // } else if tok.is_none() || tokens.current_is(&Some(lexer::Token::Separator)) {
+            //     tokens.inc(); // Generic None and Separator will need incrementing
+            //     break;
+            // }
             let tok = tok.unwrap();
-            print_verbose!("{:?}", tok);
+            print_verbose!("<Token> {:?}", tok);
             if let lexer::Token::_Comment = tok {
                 loop { // loop till EOL
                     tokens.inc();
@@ -128,29 +184,40 @@ impl Expression {
                 tokens.inc();
                 break;
             }
-            let obj = Obj::find(&tok);
-            match obj {
+            let cat_tok = Obj::categorize(&tok);
+            match cat_tok {
                 Obj::Object(_) => {
-                    self.elems.push(obj);
+                    self.elems.push(cat_tok);
                 },
                 Obj::Scope(s) => {
                     tokens.inc(); //skip over the scope start token
                     let exp_obj: Obj = match s {
                         '{' => {
-                            let mut exp_list = ExprList::new();
-                            exp_list.parse(tokens, Some(lexer::Token::ScopeEnd('}')));
-                            exp_list.to_object()
+                            let scoped = Expression::parse_scope(tokens, Some(lexer::Token::ScopeEnd('}')));
+                            Obj::Group(scoped)
                         },
                         '(' => {
                             print_verbose!(">>>>>>>>>>> {:?} {:?}", &end, self);
+                            let mut ex_list = Expression::new();
+                            ex_list.op = Obj::Operator(lexer::Token::List);
+                            while Expression::_list_sep_exists(&tokens, lexer::Token::ScopeEnd(')')) {
+                                let mut ex = Expression::new();
+                                ex.parse(tokens, Some(lexer::Token::List));
+                                if ex.elems.len() > 0 {
+                                    ex_list.elems.push(ex.to_object());
+                                }
+                            }
                             let mut ex = Expression::new();
                             ex.parse(tokens, Some(lexer::Token::ScopeEnd(')')));
+                            if ex.elems.len() > 0 {
+                                ex_list.elems.push(ex.to_object());
+                            }
                             // current token will be ScopeEnd(')')
                             if tokens.next_is(&Some(lexer::Token::FuncDef)) { // hacky increment if this is part of funcdef
                                 tokens.inc();
                             }
-                            print_verbose!("<<<<<<<< {:?} {:?}", &end, ex);
-                            ex.to_object()
+                            print_verbose!("<<<<<<<< {:?} {:?}", &end, ex_list);
+                            ex_list.to_object()
                         },
                         _ => panic!("Illegal scope start char")
                     };
@@ -159,23 +226,23 @@ impl Expression {
                         if let lexer::Token::FuncDef = *nxt_t { //Handle ()=>{} function definition
                             let mut exp = Expression::new();
                             exp.elems.push(exp_obj);
+                            exp.op = Obj::Operator(lexer::Token::FuncDef);
                             tokens.inc(); // go to next token after the funcdef token
                             match tokens.get_token() {
                                 None => panic!("Incomplete function definition"),
                                 Some(t) => {
                                     match t {
                                         lexer::Token::ScopeStart('{') => {
-                                            let mut expl = ExprList::new();
-                                            tokens.inc();
+                                            tokens.inc(); // move into scope
+                                            let scoped = Expression::parse_scope(tokens, Some(lexer::Token::ScopeEnd('}')));
                                             print_verbose!("================{:?}", tokens.get_token());
-                                            expl.parse(tokens, Some(lexer::Token::ScopeEnd('}')));
-                                            exp.elems.push(expl.to_object());
-                                            exp.op = Obj::Operator(lexer::Token::FuncDef);
+                                            exp.elems.push(Obj::Group(scoped));
                                         },
                                         _ => {
                                             let mut body_exp = Expression::new();
                                             body_exp.parse(tokens, Some(lexer::Token::Separator));
                                             exp.elems.push(body_exp.to_object());
+                                            // panic!("Single statements funcs not supported yet")
                                         }
                                     }
                                 }
@@ -184,6 +251,7 @@ impl Expression {
                                 Obj::Group(_) | Obj::Expr(_) => self.elems.push(exp.to_object()),
                                 _ => panic!("Invalid function definition {:?}", exp) // func body should be Group or Expr
                             };
+                            // break; // function definition complete
                         } else {
                             print_verbose!(" ++++++++++ {:?} {:?}", self, exp_obj);
                             self.elems.push(exp_obj);
@@ -210,6 +278,8 @@ impl Expression {
                             } else if exp.elems.len() > 1 {
                                 self.elems.push(exp.to_object());
                             }
+                            // println!(">> {:?}", self);
+                            break; // return out of parse
                         },
 
                         (Obj::Null, _) => {
@@ -220,7 +290,7 @@ impl Expression {
                         (Obj::Operator(lexer::Token::List), lexer::Token::List) => (),
 
                         (cur_op, lexer::Token::List) if cur_op != &Obj::Operator(lexer::Token::Assign) => {
-                            print_verbose!("-----------+ in here {:?}", self);
+                            print_verbose!("|||||||||| in here {:?}", self);
                             break;
                         },
 
@@ -233,8 +303,8 @@ impl Expression {
                             if exp.elems.len()!=0 {
                                 self.elems.push(exp.to_object());
                             }
-                            print_verbose!("-----------+ 2222 {:?}", tokens.get_token());
-                            continue; //skip final increment
+                            print_verbose!("-----------+ 2222 {:?} {:?}", tokens.get_token(), self);
+                            break; //skip final increment
                         }
                     }
                 },
@@ -257,139 +327,84 @@ impl Expression {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, PartialOrd)]
-pub struct ExprList {
-    pub exprs: Vec<Expression>,
-}
+// #[derive(Debug, Clone, PartialEq, PartialOrd)]
+// pub struct ExprList {
+//     pub exprs: Vec<Expression>,
+// }
 
 
-impl ExprList {
-    fn new() -> ExprList {
-        ExprList {
-            exprs: Vec::new(),
-        }
-    }
+// impl ExprList {
+//     fn new() -> ExprList {
+//         ExprList {
+//             exprs: Vec::new(),
+//         }
+//     }
 
-    fn to_object(self) -> Obj {
-        Obj::Group(self)
-        // match self.exprs.len() {
-        //     0 if flatten => Obj::List(vec![]),
-        //     1 if flatten => self.exprs.pop().unwrap().to_object(),
-        //     _ => {
-        //         // let obj_vec = self.exprs.into_iter().map(|x| x.to_object()).collect();
-        //         Obj::Group(self)
-        //     }
-        // }
-    }
+//     fn to_object(self) -> Obj {
+//         Obj::Group(self)
+//         // match self.exprs.len() {
+//         //     0 if flatten => Obj::List(vec![]),
+//         //     1 if flatten => self.exprs.pop().unwrap().to_object(),
+//         //     _ => {
+//         //         // let obj_vec = self.exprs.into_iter().map(|x| x.to_object()).collect();
+//         //         Obj::Group(self)
+//         //     }
+//         // }
+//     }
 
-    fn parse(&mut self, tokens: &mut Scanner, end: Option<lexer::Token>) {
-        // println!("-->>>>>>>");
-        loop {
-            print_verbose!(">> ps {:?}", tokens.get_next());
+//     fn parse(&mut self, tokens: &mut Scanner, end: Option<lexer::Token>) {
+//         // println!("-->>>>>>>");
+//         loop {
+//             print_verbose!(">> ps {:?}", tokens.get_next());
 
-            if tokens.current_is(&end) |
-                tokens.current_is(&None) {
-                // tokens.next_is(&end) |
-                // tokens.next_is(&None) {
-                    print_verbose!("*** {:#?}", self);
-                break;
-            }
+//             if tokens.current_is(&end) |
+//                 tokens.current_is(&None) {
+//                 // tokens.next_is(&end) |
+//                 // tokens.next_is(&None) {
+//                     print_verbose!("*** {:#?}", self);
+//                 break;
+//             }
 
-            let mut exp = Expression::new();
-            exp.parse(tokens, end.clone());
-            print_verbose!("* {:?} {:?}", exp, tokens.get_token());
-            if exp.elems.len()>0 {
-                if let Obj::Null = exp.op { // if no operator found, assume it's a list
-                    exp.op = Obj::Operator(lexer::Token::List)
-                }
-                self.exprs.push(exp);
-            }
+//             let mut exp = Expression::new();
+//             exp.parse(tokens, end.clone());
+//             print_verbose!("* {:?} {:?}", exp, tokens.get_token());
+//             if exp.elems.len()>0 {
+//                 if let Obj::Null = exp.op { // if no operator found, assume it's a list
+//                     exp.op = Obj::Operator(lexer::Token::List)
+//                 }
+//                 self.exprs.push(exp);
+//             }
 
-            // let mut scope_ended = false;
-            // if let Some(t)=tokens.get_prev() {
-            //     scope_ended = t.is_scope_end_token();
-            // }
-            // if tokens.get_token().is_none() || scope_ended==true {
-            //     break;
-            // }
-        }
-        // println!("<<<<<<<<---");
-    }
-}
-
-
-#[derive(Debug)]
-struct Scanner {
-    tokens: Vec<lexer::Token>,
-    _pointer: usize,
-}
-
-impl Scanner {
-    fn new(tokens: &Vec<lexer::Token>) -> Scanner {
-        Scanner {
-            tokens:tokens.to_vec(),
-            _pointer:0,
-        }
-    }
-    fn _valid_index(&self, i: usize) -> bool {
-        i < self.tokens.len()
-    }
-    fn inc(&mut self) {
-        self._pointer += 1;
-    }
-    // fn dec(&mut self) {
-    //     self._pointer -= 1;
-    // }
-    fn get_token(&self) -> Option<&lexer::Token> {
-        if self._valid_index(self._pointer) {
-            Some(&self.tokens[self._pointer])
-        } else {
-            None
-        }
-    }
-    // fn get_prev(&self) -> Option<&lexer::Token> {
-    //     if self._valid_index(self._pointer-1) {
-    //         Some(&self.tokens[self._pointer-1])
-    //     } else {
-    //         None
-    //     }
-    // }
-    fn get_next(&self) -> Option<&lexer::Token> {
-        if self._valid_index(self._pointer+1) {
-            Some(&self.tokens[self._pointer+1])
-        } else {
-            None
-        }
-    }
-
-    fn current_is(&self, other: &Option<lexer::Token>) -> bool {
-        let tkn = self.get_token();
-        match other {
-            Some(t) => Some(t)==tkn,
-            None => tkn.is_none()
-        }
-    }
-
-    fn next_is(&self, other: &Option<lexer::Token>) -> bool {
-        let tkn = self.get_next();
-        match other {
-            Some(t) => Some(t)==tkn,
-            None => tkn.is_none()
-        }
-    }
-}
+//             // let mut scope_ended = false;
+//             // if let Some(t)=tokens.get_prev() {
+//             //     scope_ended = t.is_scope_end_token();
+//             // }
+//             // if tokens.get_token().is_none() || scope_ended==true {
+//             //     break;
+//             // }
+//         }
+//         // println!("<<<<<<<<---");
+//     }
+// }
 
 
-pub fn parse(tokens: Vec<lexer::Token>) -> ExprList {
 
-    let mut scan = Scanner::new(&tokens);
-    let mut output = ExprList::new();
-    output.parse(&mut scan, None);
+
+
+
+
+
+pub fn parse(tokens: &mut lexer::Scanner) -> Vec<Expression> {
+    print_verbose!("\n--------parsing start!--------");
+
+    let output: Vec<Expression> = Expression::parse_scope(tokens, None);
+
     if env::var("VERBOSE").is_ok() {
-        for (i,o) in output.exprs.iter().enumerate() {
+        println!("\n--------parsing done!--------");
+        for (i,o) in output.iter().enumerate() {
             println!("{} {:?}", i, o)
         }
-        println!("------------------");
+        println!("------------------\n");
     }
     output
 }
