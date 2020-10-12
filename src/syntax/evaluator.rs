@@ -134,11 +134,11 @@ impl<'a> NameSpace<'a> {
             None => "anonymous"
         };
 
-        let args = match args {
-            Obj::Expr(e) => Obj::List(vec![self.solve_expr(e)]),
-            _ => args.clone()
+        let args: Vec<Obj> = match args {
+            Obj::List(l) => l.to_vec(),
+            _ => vec![args.clone()]
         };
-        let args = args.get_list().expect("function arguments should be of internal type Obj::List");
+
         match func {
             Obj::Func(f) => {
                 let req_args = f.args.get_list().expect("function definition error");

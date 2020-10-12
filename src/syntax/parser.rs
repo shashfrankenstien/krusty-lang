@@ -94,11 +94,11 @@ impl Expression {
         if let Obj::Operator(lexer::Token::FuncDef) = self.op {
             if self.elems.len() == 2 {
                 let body = self.elems.pop().unwrap();
-                let args = self.elems.pop().unwrap();
+                let mut args = self.elems.pop().unwrap();
                 // Obj::Func(FuncDef {args, body})
-                match args {
+                match args { // convert args to list
                     Obj::List(_) => (),
-                    _ => panic!("Invalid function arguments- {:?}", self)
+                    _ => args = Obj::List(vec![args])
                 }
                 match body {
                     Obj::Group(_) | Obj::Expr(_) => (),
@@ -108,7 +108,8 @@ impl Expression {
             } else {
                 panic!("Illegal function definition - {:?}", self)
             }
-        } else {
+        }
+        else {
             Obj::Expr(Box::new(self))
         }
     }
@@ -184,10 +185,7 @@ impl Expression {
                 tokens.inc();
                 break; // If required end is reached, don't increment
             }
-            // } else if tok.is_none() || tokens.current_is(&Some(lexer::Token::Separator)) {
-            //     tokens.inc(); // Generic None and Separator will need incrementing
-            //     break;
-            // }
+
             let tok = tok.unwrap();
             print_verbose!("<Token> {:?}", tok);
             if let lexer::Token::_Comment = tok {
@@ -217,23 +215,30 @@ impl Expression {
                         '(' => {
                             print_verbose!(">>>>>>>>>>> {:?} {:?}", &end, self);
                             let mut ex_list = Expression::new();
-                            ex_list.op = Obj::Operator(lexer::Token::List);
-
                             let elem_count = Expression::_count_list_elems(&tokens);
 
-                            for _ in 0..(elem_count - 1) {
+                            if elem_count == 1 {
+                                // if only one elem, the syntax is like (a + 1) or (x)
+                                // these are not considered list like
+                                ex_list.parse(tokens, Some(lexer::Token::ScopeEnd(')')));
+                            } else {
+                                // parse each element
+                                ex_list.op = Obj::Operator(lexer::Token::List);
+
+                                for _ in 0..(elem_count - 1) {
+                                    let mut ex = Expression::new();
+                                    ex.parse(tokens, Some(lexer::Token::List));
+                                    if ex.elems.len() > 0 {
+                                        ex_list.elems.push(ex.to_object());
+                                    }
+                                }
                                 let mut ex = Expression::new();
-                                ex.parse(tokens, Some(lexer::Token::List));
+                                ex.parse(tokens, Some(lexer::Token::ScopeEnd(')')));
                                 if ex.elems.len() > 0 {
                                     ex_list.elems.push(ex.to_object());
                                 }
                             }
-                            // println!("\t\t\tCLOSE {:?} {:?}", ex_list, tokens.get_token());
-                            let mut ex = Expression::new();
-                            ex.parse(tokens, Some(lexer::Token::ScopeEnd(')')));
-                            if ex.elems.len() > 0 {
-                                ex_list.elems.push(ex.to_object());
-                            }
+
                             // current token will be ScopeEnd(')')
                             if tokens.next_is(&Some(lexer::Token::FuncDef)) { // hacky increment if this is part of funcdef
                                 tokens.inc();
@@ -309,13 +314,6 @@ impl Expression {
                             self.op = Obj::Operator(op)
                         },
 
-                        (Obj::Operator(lexer::Token::List), lexer::Token::List) => (),
-
-                        (cur_op, lexer::Token::List) if cur_op != &Obj::Operator(lexer::Token::Assign) => {
-                            print_verbose!("|||||||||| in here {:?}", self);
-                            break;
-                        },
-
                         _ => { // fallback sequence
                             let mut exp = Expression::new();
                             if self.elems.len() > 0 {
@@ -348,68 +346,6 @@ impl Expression {
         // println!("<--");
     }
 }
-
-// #[derive(Debug, Clone, PartialEq, PartialOrd)]
-// pub struct ExprList {
-//     pub exprs: Vec<Expression>,
-// }
-
-
-// impl ExprList {
-//     fn new() -> ExprList {
-//         ExprList {
-//             exprs: Vec::new(),
-//         }
-//     }
-
-//     fn to_object(self) -> Obj {
-//         Obj::Group(self)
-//         // match self.exprs.len() {
-//         //     0 if flatten => Obj::List(vec![]),
-//         //     1 if flatten => self.exprs.pop().unwrap().to_object(),
-//         //     _ => {
-//         //         // let obj_vec = self.exprs.into_iter().map(|x| x.to_object()).collect();
-//         //         Obj::Group(self)
-//         //     }
-//         // }
-//     }
-
-//     fn parse(&mut self, tokens: &mut Scanner, end: Option<lexer::Token>) {
-//         // println!("-->>>>>>>");
-//         loop {
-//             print_verbose!(">> ps {:?}", tokens.get_next());
-
-//             if tokens.current_is(&end) |
-//                 tokens.current_is(&None) {
-//                 // tokens.next_is(&end) |
-//                 // tokens.next_is(&None) {
-//                     print_verbose!("*** {:#?}", self);
-//                 break;
-//             }
-
-//             let mut exp = Expression::new();
-//             exp.parse(tokens, end.clone());
-//             print_verbose!("* {:?} {:?}", exp, tokens.get_token());
-//             if exp.elems.len()>0 {
-//                 if let Obj::Null = exp.op { // if no operator found, assume it's a list
-//                     exp.op = Obj::Operator(lexer::Token::List)
-//                 }
-//                 self.exprs.push(exp);
-//             }
-
-//             // let mut scope_ended = false;
-//             // if let Some(t)=tokens.get_prev() {
-//             //     scope_ended = t.is_scope_end_token();
-//             // }
-//             // if tokens.get_token().is_none() || scope_ended==true {
-//             //     break;
-//             // }
-//         }
-//         // println!("<<<<<<<<---");
-//     }
-// }
-
-
 
 
 

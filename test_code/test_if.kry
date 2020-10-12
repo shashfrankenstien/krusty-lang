@@ -1,10 +1,19 @@
+
+test_func = () => {
+    p = if(
+        (x>=0),
+        if(x<10, "single digit", "double digit"),
+        "negative"
+    );
+    ret p;
+};
+
+
 x = 1;
+print(test_func(), x);
 
-p = if(
-    (x>=0),
-    if(x<10, "single digit", "double digit"),
-    "negative"
-);
+x = 11;
+print(test_func(), x);
 
-
-print(p);
+x = x * -1;
+print(test_func(), x);
