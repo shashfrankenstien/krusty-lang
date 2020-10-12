@@ -25,9 +25,10 @@ impl fmt::Display for Obj {
             Obj::Null => write!(f, "null"),
             Obj::List(l) => {
                 write!(f, "(").unwrap();
-                for member in l {
-                    write!(f, "{},", member).unwrap();
+                for i in 0..(l.len()-1) {
+                    write!(f, "{},", l[i]).unwrap();
                 };
+                write!(f, "{}", l[l.len()-1]).unwrap();
                 write!(f, ")")
             },
             _ => write!(f, "{:?}", self),
