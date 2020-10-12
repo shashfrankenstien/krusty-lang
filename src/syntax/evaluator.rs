@@ -128,41 +128,49 @@ impl<'a> NameSpace<'a> {
         }
     }
 
+    pub fn eval_func_obj(&mut self, func: &Obj, args: &Obj, name: Option<&String>) -> Obj {
+        let name = match name {
+            Some(s) => s,
+            None => "anonymous"
+        };
 
-    fn eval_func(&mut self, name: &String, args: &Obj) -> Obj {
-        // println!("<F> {:?}", args);
         let args = match args {
             Obj::Expr(e) => Obj::List(vec![self.solve_expr(e)]),
             _ => args.clone()
         };
         let args = args.get_list().expect("function arguments should be of internal type Obj::List");
+        match func {
+            Obj::Func(f) => {
+                let req_args = f.args.get_list().expect("function definition error");
+                if req_args.len() != args.len() {
+                    panic!("function arguments for '{}' don't match", name);
+                } else {
+                    let mut exec_env = NameSpace::new(Some(self));
+                    for (k,v) in req_args.iter().zip(args.iter()) {
+                        exec_env.assign(&k, &v);
+                    }
+                    print_verbose!("CALL {} {:?}", name, f.body);
+                    match &f.body { // return function result
+                        Obj::Group(elist) => exec_env.run(&elist),
+                        _ => panic!("function '{}' definition error", name),
+                    }
+                }
+            },
+            Obj::BuiltinFunc(f) => {
+                let f = builtins::find_func(&f[..]);
+                let clean_args: Vec<Obj> = args.iter().map(|x| self.resolve(x)).collect();
+                f(self, &clean_args)
+            }
+            _ => panic!("function '{}' definition error", name)
+        }
+    }
+
+    fn eval_func(&mut self, name: &String, args: &Obj) -> Obj {
+        // println!("<F> {:?}", args);
         match self.get(name) {
             None => panic!("function '{}' not defined"),
             Some(func) => {
-                match func {
-                    Obj::Func(f) => {
-                        let req_args = f.args.get_list().expect("function definition error");
-                        if req_args.len() != args.len() {
-                            panic!("function arguments for '{}' don't match", name);
-                        } else {
-                            let mut exec_env = NameSpace::new(Some(self));
-                            for (k,v) in req_args.iter().zip(args.iter()) {
-                                exec_env.assign(&k, &v);
-                            }
-                            print_verbose!("CALL {} {:?}", name, f.body);
-                            match f.body { // return function result
-                                Obj::Group(elist) => exec_env.run(&elist),
-                                _ => panic!("function '{}' definition error", name),
-                            }
-                        }
-                    },
-                    Obj::BuiltinFunc(f) => {
-                        let f = builtins::find_func(&f[..]);
-                        let clean_args: Vec<Obj> = args.iter().map(|x| self.resolve(x)).collect();
-                        f(&clean_args)
-                    }
-                    _ => panic!("function '{}' definition error", name)
-                }
+                self.eval_func_obj(&func, args, Some(name))
             },
         }
     }

@@ -56,6 +56,13 @@ impl Obj {
             _ => None,
         }
     }
+
+    pub fn get_bool(&self) -> Option<bool> {
+        match self {
+            Obj::Bool(b) => Some(*b),
+            _ => None,
+        }
+    }
 }
 
 
@@ -133,26 +140,37 @@ impl Expression {
         output
     }
 
-    fn _list_sep_exists(tokens: &lexer::Scanner, before: lexer::Token) -> bool {
+    fn _count_list_elems(tokens: &lexer::Scanner) -> i32 {
         let mut idx = tokens.current_idx();
-        let mut found = false;
+        let mut elem_count: i32 = 0;
+        let mut sub_scopes_count: i32 = 0;
         loop {
             let tkn = tokens.get_token_at(idx);
             match tkn {
                 Some(t) => {
-                    if *t == before || *t == lexer::Token::Separator {
-                        break;
+                    if *t == lexer::Token::ScopeStart('(') || *t == lexer::Token::ScopeStart('{') {
+                        sub_scopes_count += 1;
                     }
-                    else if *t == lexer::Token::List {
-                        found = true;
-                        break;
+                    else if sub_scopes_count > 0 {
+                        if *t == lexer::Token::ScopeEnd(')') || *t == lexer::Token::ScopeEnd('}') {
+                            sub_scopes_count -= 1;
+                        }
+                    }
+                    else {
+                        if *t == lexer::Token::ScopeEnd(')') || *t == lexer::Token::Separator {
+                            elem_count += 1;
+                            break;
+                        }
+                        else if *t == lexer::Token::List {
+                            elem_count += 1;
+                        }
                     }
                 },
                 None => break // end reached
             }
             idx += 1;
         }
-        found
+        elem_count
     }
 
     fn parse(&mut self, tokens: &mut lexer::Scanner, end: Option<lexer::Token>) {
@@ -200,13 +218,17 @@ impl Expression {
                             print_verbose!(">>>>>>>>>>> {:?} {:?}", &end, self);
                             let mut ex_list = Expression::new();
                             ex_list.op = Obj::Operator(lexer::Token::List);
-                            while Expression::_list_sep_exists(&tokens, lexer::Token::ScopeEnd(')')) {
+
+                            let elem_count = Expression::_count_list_elems(&tokens);
+
+                            for _ in 0..(elem_count - 1) {
                                 let mut ex = Expression::new();
                                 ex.parse(tokens, Some(lexer::Token::List));
                                 if ex.elems.len() > 0 {
                                     ex_list.elems.push(ex.to_object());
                                 }
                             }
+                            // println!("\t\t\tCLOSE {:?} {:?}", ex_list, tokens.get_token());
                             let mut ex = Expression::new();
                             ex.parse(tokens, Some(lexer::Token::ScopeEnd(')')));
                             if ex.elems.len() > 0 {
@@ -216,7 +238,7 @@ impl Expression {
                             if tokens.next_is(&Some(lexer::Token::FuncDef)) { // hacky increment if this is part of funcdef
                                 tokens.inc();
                             }
-                            print_verbose!("<<<<<<<< {:?} {:?}", &end, ex_list);
+                            print_verbose!("<<<<<<<< {:?} {:?}", tokens.get_token(), ex_list);
                             ex_list.to_object()
                         },
                         _ => panic!("Illegal scope start char")

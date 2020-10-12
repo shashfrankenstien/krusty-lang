@@ -2,6 +2,7 @@ use std::fmt;
 use std::collections::HashMap;
 use crate::syntax::lexer::Token;
 use crate::syntax::parser::Obj;
+use crate::syntax::evaluator::NameSpace;
 
 
 impl fmt::Display for Token {
@@ -34,15 +35,8 @@ impl fmt::Display for Obj {
     }
 }
 
-// impl fmt::Display for ExprList {
-//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//         write!(f, "ExprList({:?})", self.exprs)
-//     }
-// }
 
-
-
-pub fn _print(args: &Vec<Obj>) -> Obj {
+pub fn _print(_: &mut NameSpace, args: &Vec<Obj>) -> Obj {
     match args.len() {
         0 => println!(""),
         _ => {
@@ -63,7 +57,7 @@ pub fn _print(args: &Vec<Obj>) -> Obj {
 }
 
 
-pub fn _type(args: &Vec<Obj>) -> Obj {
+pub fn _type(_: &mut NameSpace, args: &Vec<Obj>) -> Obj {
     if args.len() != 1 {
         panic!("'type' function takes only one argument")
     }
@@ -81,19 +75,43 @@ pub fn _type(args: &Vec<Obj>) -> Obj {
     }
 }
 
+pub fn _if(ns: &mut NameSpace, args: &Vec<Obj>) -> Obj {
+    if args.len() != 3 {
+        panic!("'if' function takes only 3 arguments, {} provided", args.len())
+    }
+    let condition = match &args[0] {
+        Obj::List(l) => l[0].get_bool().unwrap(),
+        Obj::Bool(b) => *b,
+        _ => panic!("unsupported condition statement")
+    };
+
+    let branch = if condition==true {
+        1
+    } else {
+        2
+    };
+    match &args[branch] {
+        Obj::Func(_) => ns.eval_func_obj(&args[branch], &Obj::List(vec![]), None),
+        _ => args[branch].clone()
+    }
+}
+
 
 pub fn load(env_bi: &mut HashMap<String, Obj>) {
     env_bi.insert("null".to_string(), Obj::Null);
     env_bi.insert("true".to_string(), Obj::Bool(true));
     env_bi.insert("false".to_string(), Obj::Bool(false));
+
     env_bi.insert("print".to_string(), Obj::BuiltinFunc("print".to_string()));
     env_bi.insert("type".to_string(), Obj::BuiltinFunc("type".to_string()));
+    env_bi.insert("if".to_string(), Obj::BuiltinFunc("if".to_string()));
 }
 
-pub fn find_func(name: &str) -> fn(&Vec<Obj>) -> Obj {
+pub fn find_func(name: &str) -> fn(&mut NameSpace, &Vec<Obj>) -> Obj {
     match name {
         "print" => _print,
         "type" => _type,
+        "if" => _if,
         _ => panic!("'{}' not found", name)
     }
 }

@@ -1,0 +1,10 @@
+x = 1;
+
+p = if(
+    (x>=0),
+    if(x<10, "single digit", "double digit"),
+    "negative"
+);
+
+
+print(p);
