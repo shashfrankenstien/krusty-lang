@@ -1,15 +1,16 @@
 use std::io::Read; // for read_to_string
 use std::fs::File;
 use std::path::PathBuf;
-use std::fmt;
 use std::env; // required for print_verbose! macro
 use std::collections::HashMap;
+
+use std::fmt;
 
 use crate::syntax::{lexer, lexer::Token};
 use crate::syntax::{parser, parser::Obj};
 use crate::syntax::evaluator::NameSpace;
 
-
+// ================ print =======================
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -81,7 +82,9 @@ pub fn _type(_: &mut NameSpace, args: &Vec<Obj>) -> Obj {
     }
 }
 
-pub fn _if(ns: &mut NameSpace, args: &Vec<Obj>) -> Obj {
+// ================ if =======================
+
+pub fn _if(_: &mut NameSpace, args: &Vec<Obj>) -> Obj {
     if args.len() != 3 {
         panic!("'if' function takes only 3 arguments, {} provided", args.len())
     }
@@ -91,18 +94,12 @@ pub fn _if(ns: &mut NameSpace, args: &Vec<Obj>) -> Obj {
         _ => panic!("unsupported condition statement")
     };
 
-    let branch = if condition==true {
-        1
-    } else {
-        2
-    };
-    match &args[branch] {
-        Obj::Func(_) => ns.eval_func_obj(&args[branch], &Obj::List(vec![]), None),
-        _ => args[branch].clone()
-    }
+    let branch = if condition==true { 1 } else { 2 };
+    args[branch].clone()
 }
 
 
+// ================ import ================
 
 pub fn _import(ns: &mut NameSpace, args: &Vec<Obj>) -> Obj {
     if args.len() != 1 {
@@ -138,6 +135,49 @@ pub fn _import(ns: &mut NameSpace, args: &Vec<Obj>) -> Obj {
 }
 
 
+// ================ iter ================
+
+pub fn _len(_: &mut NameSpace, args: &Vec<Obj>) -> Obj {
+    if args.len() != 1 {
+        panic!("can only import one at a time for now")
+    }
+    let length = match &args[0] {
+        Obj::List(l) => l.len(),
+        Obj::Object(Token::Text(t)) => t.len(),
+        _ => panic!("len() not supported")
+    };
+    Obj::Object(Token::Number(length as f64))
+}
+
+pub fn _foreach(ns: &mut NameSpace, args: &Vec<Obj>) -> Obj {
+    if args.len() != 2 {
+        panic!("can only import one at a time for now")
+    }
+    if let Obj::Func(_) | Obj::BuiltinFunc(_) = &args[1] {
+        let res: Vec<Obj>;
+        return match &args[0] {
+            Obj::List(l) => {
+                res = l.iter().map(|x| ns.eval_func_obj(&args[1], &x, None)).collect();
+                Obj::List(res)
+            },
+            Obj::Object(Token::Text(t)) => {
+                res = t.chars().map(|c| ns.eval_func_obj(&args[1], &Obj::Object(Token::Text(c.to_string())), None)).collect();
+                // for c in t.chars() {
+                //     ns.eval_func_obj(&args[1], &Obj::Object(Token::Text(c.to_string())), None);
+                // }
+                Obj::List(res)
+            },
+            _ => panic!("iteration not supported")
+        }
+    } else {
+        panic!("second argument should be a function");
+    }
+}
+
+
+// ================ namespace helper functions ====================
+
+
 pub fn load(env_bi: &mut HashMap<String, Obj>) {
     env_bi.insert("null".to_string(), Obj::Null);
     env_bi.insert("true".to_string(), Obj::Bool(true));
@@ -147,6 +187,8 @@ pub fn load(env_bi: &mut HashMap<String, Obj>) {
     env_bi.insert("type".to_string(), Obj::BuiltinFunc("type".to_string()));
     env_bi.insert("if".to_string(), Obj::BuiltinFunc("if".to_string()));
     env_bi.insert("import".to_string(), Obj::BuiltinFunc("import".to_string()));
+    env_bi.insert("len".to_string(), Obj::BuiltinFunc("len".to_string()));
+    env_bi.insert("foreach".to_string(), Obj::BuiltinFunc("foreach".to_string()));
 }
 
 pub fn find_func(name: &str) -> fn(&mut NameSpace, &Vec<Obj>) -> Obj {
@@ -155,6 +197,8 @@ pub fn find_func(name: &str) -> fn(&mut NameSpace, &Vec<Obj>) -> Obj {
         "type" => _type,
         "if" => _if,
         "import" => _import,
+        "len" => _len,
+        "foreach" => _foreach,
         _ => panic!("'{}' not found", name)
     }
 }
