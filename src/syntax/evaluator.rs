@@ -97,7 +97,13 @@ impl<'a> NameSpace<'a> {
             Obj::Expr(ex) => self.solve_expr(ex),
             Obj::Object(Token::Symbol(s)) => self.get(s).unwrap(),
             Obj::List(l) => Obj::List(l.into_iter().map(|x| self.resolve(x)).collect()),
-            Obj::Group(_) => Obj::Null, // TODO
+            Obj::ModBody(m) => {
+                // resolve ModBody to Mod
+                let mut ns = NameSpace::new(Some(self));
+                ns.run(&m);
+                ns.to_object()
+            },
+            Obj::FuncBody(_) => Obj::Null, // this should never be called I think
             _ => o.clone()
         }
     }
@@ -180,7 +186,7 @@ impl<'a> NameSpace<'a> {
                     }
                     print_verbose!("CALL {} {:?}", name, f.body);
                     match &f.body { // return function result
-                        Obj::Group(elist) => exec_env.run(&elist),
+                        Obj::FuncBody(elist) => exec_env.run(&elist),
                         _ => panic!("function '{}' definition error", name),
                     }
                 }

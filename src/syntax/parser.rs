@@ -42,12 +42,12 @@ pub enum Obj {
     Operator(lexer::Token),
     Scope(char),
     Expr(Box<Expression>), // use Box since Expression has Obj type members (recursive)
-    Group(Vec<Expression>),
-    // Group(Vec<Obj>),
     List(Vec<Obj>),
     Func(Box<FuncDef>),
+    FuncBody(Vec<Expression>),
     BuiltinFunc(String),
     Mod(Module),
+    ModBody(Vec<Expression>), // same definition as FuncBody, but evaluated differently
 }
 
 impl Obj {
@@ -126,7 +126,7 @@ impl Expression {
                     _ => args = Obj::List(vec![args])
                 }
                 match body {
-                    Obj::Group(_) | Obj::Expr(_) => (),
+                    Obj::FuncBody(_) | Obj::Expr(_) => (),
                     _ => panic!("Invalid function body")
                 }
                 Obj::Func(Box::new(FuncDef {args, body}))
@@ -208,7 +208,7 @@ impl Expression {
 
             if tokens.current_is(&end) || tokens.current_is(&None) {
                 tokens.inc();
-                break; // If required end is reached, don't increment
+                break; // If required end is reached
             }
 
             let tok = tok.unwrap();
@@ -235,7 +235,7 @@ impl Expression {
                     let exp_obj: Obj = match s {
                         '{' => {
                             let scoped = Expression::parse_scope(tokens, Some(lexer::Token::ScopeEnd('}')));
-                            Obj::Group(scoped)
+                            Obj::ModBody(scoped) // same definition as FuncBody, but evaluated differently
                         },
                         '(' => {
                             print_verbose!(">>>>>>>>>>> {:?} {:?}", &end, self);
@@ -288,7 +288,7 @@ impl Expression {
                                             tokens.inc(); // move into scope
                                             let scoped = Expression::parse_scope(tokens, Some(lexer::Token::ScopeEnd('}')));
                                             print_verbose!("================{:?}", tokens.get_token());
-                                            exp.elems.push(Obj::Group(scoped));
+                                            exp.elems.push(Obj::FuncBody(scoped));
                                         },
                                         _ => {
                                             let mut body_exp = Expression::new();
@@ -300,8 +300,8 @@ impl Expression {
                                 }
                             }
                             match exp.elems[1] {
-                                Obj::Group(_) | Obj::Expr(_) => self.elems.push(exp.to_object()),
-                                _ => panic!("Invalid function definition {:?}", exp) // func body should be Group or Expr
+                                Obj::FuncBody(_) | Obj::Expr(_) => self.elems.push(exp.to_object()),
+                                _ => panic!("Invalid function definition {:?}", exp) // func body should be FuncBody or Expr
                             };
                             // break; // function definition complete
                         } else {

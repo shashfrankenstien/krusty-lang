@@ -2,8 +2,11 @@
 test_func = () => {
     p = if(
         (x>=0),
-        if(x<10, "single digit", "double digit"),
-        "negative"
+            if(x<10,
+                "single digit",
+                "double digit"
+            ),
+            "negative"
     );
     ret p;
 };

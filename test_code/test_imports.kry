@@ -1,5 +1,9 @@
 math = import("math");
 
-print(math.add(1,5));
+print(
+    "pi =", math.libpi.pi,
+    "add(pi, 5) =", math.add(math.libpi.pi,5)
+);
 
-print(math.libpi.pi);
+print(math.circle.area(2.5));
+print(math.circle.circumference(2.5));

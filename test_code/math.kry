@@ -1,17 +1,12 @@
-libpi = import("lib/pi");
+libpi = import("mathlib/pi");
+arith = import("mathlib/arith");
 
-add = (a, b)=>{
-    ret a + b;
-};
+add = arith.add;
+sub = arith.sub;
+mul = arith.mul;
+div = arith.div;
 
-sub = (a, b)=>{
-    ret a - b;
-};
-
-div = (a, b)=>{
-    ret a / b;
-};
-
-mul = (a, b)=>{
-    ret a * b;
-};
+circle = {
+    area = (radius) => {ret libpi.pi * radius * radius;};
+    circumference = (radius) => {ret libpi.pi * radius * 2;};
+}

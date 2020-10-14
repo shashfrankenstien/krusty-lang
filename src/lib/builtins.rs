@@ -76,7 +76,8 @@ pub fn _type(_: &mut NameSpace, args: &Vec<Obj>) -> Obj {
         Obj::List(_) => Obj::Object(Token::Text("<List>".to_string())),
         Obj::Bool(_) => Obj::Object(Token::Text("<Bool>".to_string())),
         Obj::Expr(_) => Obj::Object(Token::Text("<Expr>".to_string())),
-        Obj::Group(_) => Obj::Object(Token::Text("<ExprGroup>".to_string())),
+        Obj::FuncBody(_) => Obj::Object(Token::Text("<FuncBody>".to_string())),
+        Obj::Mod(_) => Obj::Object(Token::Text("<Module>".to_string())),
         Obj::Null => Obj::Object(Token::Text("<Null>".to_string())),
         _ => Obj::Object(Token::Text("<Type Not Found>".to_string()))
     }
