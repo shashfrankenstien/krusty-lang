@@ -1,4 +1,8 @@
+use std::collections::HashMap;
 use std::env; // required for print_verbose! macro
+use std::cmp::Ordering;
+use std::path::PathBuf;
+
 use crate::syntax::lexer;
 
 
@@ -8,6 +12,26 @@ pub struct FuncDef {
     pub body: Obj
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct Module {
+    pub vars: HashMap<String, Obj>,
+    pub path: Option<PathBuf>
+}
+
+impl PartialOrd for Module {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.vars.len().partial_cmp(&other.vars.len())
+    }
+}
+
+impl Module {
+    pub fn new(path: Option<PathBuf>) -> Module {
+        Module {
+            vars: HashMap::new(),
+            path
+        }
+    }
+}
 
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
@@ -16,7 +40,6 @@ pub enum Obj {
     Bool(bool),
     Object(lexer::Token),
     Operator(lexer::Token),
-    SuffixOperator(lexer::Token),
     Scope(char),
     Expr(Box<Expression>), // use Box since Expression has Obj type members (recursive)
     Group(Vec<Expression>),
@@ -24,6 +47,7 @@ pub enum Obj {
     List(Vec<Obj>),
     Func(Box<FuncDef>),
     BuiltinFunc(String),
+    Mod(Module),
 }
 
 impl Obj {
@@ -42,9 +66,10 @@ impl Obj {
                 | Token::List
                 | Token::FuncCall
                 | Token::FuncReturn
+                | Token::Index(_)
+                | Token::Accessor
                 => Obj::Operator(tok.clone()),
 
-            Token::Index(_) => Obj::SuffixOperator(tok.clone()),
             Token::ScopeStart(s) => Obj::Scope(*s),
             _ => Obj::Null
         }
@@ -216,7 +241,7 @@ impl Expression {
                             print_verbose!(">>>>>>>>>>> {:?} {:?}", &end, self);
                             let mut ex_list = Expression::new();
                             let elem_count = Expression::_count_list_elems(&tokens);
-
+                            print_verbose!("<list> {}", elem_count);
                             if elem_count == 1 {
                                 // if only one elem, the syntax is like (a + 1) or (x)
                                 // these are not considered list like
@@ -314,12 +339,22 @@ impl Expression {
                             self.op = Obj::Operator(op)
                         },
 
+                        (_, lexer::Token::Index(i)) => {
+                            if self.elems.len() == 0 {
+                                panic!("Suffix [{}] without symbol or expression", i);
+                            }
+                            let mut exp = Expression::new();
+                            exp.elems.push(self.elems.pop().unwrap()); // setup object to apply suffix operator to
+                            exp.op = Obj::Operator(op);
+                            self.elems.push(exp.to_object());
+                        },
+
                         _ => { // fallback sequence
                             let mut exp = Expression::new();
                             if self.elems.len() > 0 {
                                 exp.elems.push(self.elems.pop().unwrap()); // setup LHS
                             }
-                            exp.parse(tokens, Some(lexer::Token::Separator)); // look for RHS
+                            exp.parse(tokens, end); // look till end token reached
                             if exp.elems.len()!=0 {
                                 self.elems.push(exp.to_object());
                             }
@@ -329,16 +364,6 @@ impl Expression {
                     }
                 },
 
-
-                Obj::SuffixOperator(sop) => {
-                    if self.elems.len() == 0 {
-                        panic!("Suffix {} without symbol or expression", sop);
-                    }
-                    let mut exp = Expression::new();
-                    exp.elems.push(self.elems.pop().unwrap()); // setup object to apply suffix operator to
-                    exp.op = Obj::SuffixOperator(sop);
-                    self.elems.push(exp.to_object());
-                }
                 _=>()
             }
             tokens.inc();

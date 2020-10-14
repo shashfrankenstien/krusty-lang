@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 use std::env;
+use std::path::PathBuf;
+use std::fs;
 
-use crate::syntax::parser::{Obj, Expression};
+use crate::syntax::parser::{Obj, Expression, Module};
 use crate::syntax::lexer::Token;
 use crate::lib::builtins;
 
@@ -9,22 +11,29 @@ use crate::lib::builtins;
 
 #[derive(Debug)]
 pub struct NameSpace<'a> {
-    builtin_funcs: HashMap<String, Obj>,
-    vars: HashMap<String, Obj>,
+    builtin_funcs: Option<HashMap<String, Obj>>,
     parent: Option<&'a NameSpace<'a>>,
+    module: Module,
 }
+
 
 impl<'a> NameSpace<'a> {
     pub fn new(parent: Option<&'a NameSpace<'a>>) -> NameSpace<'a> {
-        let mut builtin_funcs = HashMap::new();
+        let mut builtin_funcs: Option<HashMap<String, Obj>> = None;
         if let None = parent {
-            builtins::load(&mut builtin_funcs);
+            let mut b = HashMap::new();
+            builtins::load(&mut b);
+            builtin_funcs = Some(b);
         }
         NameSpace {
-            vars: HashMap::new(),
+            module: Module::new(None),
             builtin_funcs,
-            parent
+            parent,
         }
+    }
+
+    pub fn to_object(self) -> Obj {
+        Obj::Mod(self.module)
     }
 
     pub fn run(&mut self, elist: &Vec<Expression>) -> Obj {
@@ -43,24 +52,44 @@ impl<'a> NameSpace<'a> {
 
 
     fn get(&self, key: &String) -> Option<Obj> {
-        match self.vars.get(key) {
+        match self.module.vars.get(key) {
             Some(v) => Some(v.clone()),
             None => {
-                match self.builtin_funcs.get(key) {
-                    Some(v) => Some(v.clone()),
+                match self.parent {
+                    Some(p) => p.get(key),
                     None => {
-                        match self.parent {
-                            Some(p) => p.get(key),
-                            None => panic!("Symbol '{}' not found", key)
+                        // No parent. Means we are at the top of the stack
+                        // Search for builtins only at the top of the stack
+                        match self.builtin_funcs.as_ref().expect("no builtins?!").get(key) {
+                            Some(v) => Some(v.clone()),
+                            None => {
+                                panic!("Symbol '{}' not found", key)
+                            }
                         }
                     }
                 }
+
             },
         }
     }
 
     fn set(&mut self, key: String, value: Obj) {
-        self.vars.insert(key, value);
+        self.module.vars.insert(key, value);
+    }
+
+    pub fn get_path(&self) -> Option<PathBuf> {
+        if !self.module.path.is_none() { // path exists
+            self.module.path.clone()
+        } else if !self.parent.is_none() { // path doesn't exist, but parent exists
+            self.parent.unwrap().get_path() // get from parent
+        } else {
+            None
+        }
+    }
+
+    pub fn set_path(&mut self, filepath: &PathBuf) {
+        let srcdir = fs::canonicalize(&filepath).expect("No such File!");
+        self.module.path = Some(srcdir)
     }
 
     fn resolve(&mut self, o: &Obj) -> Obj {
@@ -242,12 +271,39 @@ impl<'a> NameSpace<'a> {
                     _ => Obj::List(ret_list)
                 }
             },
-            Obj::SuffixOperator(Token::Index(idx)) => {
+            Obj::Operator(Token::Index(idx)) => {
                 if exp.elems.len() != 1 {
                     panic!("Illegal index operation");
                 }
                 let val = self.resolve(&exp.elems[0]);
                 self.pick_index(idx, &val)
+            },
+            Obj::Operator(Token::Accessor) => {
+                if exp.elems.len() != 2 {
+                    panic!("Illegal access operation");
+                }
+                match self.resolve(&exp.elems[0]) {
+                    Obj::Mod(m) => {
+                        match &exp.elems[1] {
+                            Obj::Object(Token::Symbol(s)) => m.vars.get(s).expect("member not found").clone(),
+                            Obj::Expr(x) => {
+                                match x.op {
+                                    Obj::Operator(Token::Assign) => panic!("cannot assign into module"),
+                                    _ => {
+                                        let mut ns = NameSpace { // create new execution namespace
+                                            builtin_funcs: None,
+                                            module: m,
+                                            parent: Some(self)
+                                        };
+                                        ns.solve_expr(x)
+                                    }
+                                }
+                            },
+                            _ => panic!("invalid use of '.' accessor")
+                        }
+                    },
+                    _ => panic!("invalid use of '.' accessor")
+                }
             }
             _ => exp.clone().to_object()
         }

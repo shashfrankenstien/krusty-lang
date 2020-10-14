@@ -1,0 +1,17 @@
+libpi = import("lib/pi");
+
+add = (a, b)=>{
+    ret a + b;
+};
+
+sub = (a, b)=>{
+    ret a - b;
+};
+
+div = (a, b)=>{
+    ret a / b;
+};
+
+mul = (a, b)=>{
+    ret a * b;
+};

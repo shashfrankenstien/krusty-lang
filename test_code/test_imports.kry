@@ -1,0 +1,5 @@
+math = import("math");
+
+print(math.add(1,5));
+
+print(math.libpi.pi);

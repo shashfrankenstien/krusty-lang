@@ -20,6 +20,7 @@ pub enum Token {
     List,
     Index(Box<Token>),
     Assign,
+    Accessor,
     _Comment,
     _NewLine,
 }
@@ -28,7 +29,7 @@ pub enum Token {
 lazy_static! {
     static ref RE: RegexSet = RegexSet::new(&[
         r"^[\*]?[_a-zA-Z]+[_a-zA-Z0-9]*$", //symbol - 0
-        r"^[+-]?[.0-9]+$", //numbers - 1
+        r"^[+-]?[.\d]+$", //numbers - 1
         r#"(^".*"$)|(^'.*'$)"#, //strings1 - 2
         r#"^[+\-/\*]$"#, //Arith - 3
         r"^;$", //sep - 4
@@ -63,8 +64,12 @@ impl Token {
         let m: Vec<_> = RE.matches(txt).into_iter().collect();
         if !m.is_empty() {
             return match m[0] {
+                0 if txt == "ret" => Some(Token::FuncReturn),
                 0 => Some(Token::Symbol(txt.to_string())),
+
+                1 if txt == "." => Some(Token::Accessor), // hacky workaround due to lack of regex lookaround
                 1 => Some(Token::Number(txt.parse().expect("This is not a number"))),
+
                 2 => Some(Token::Text(RE_QUOTES.replace_all(txt, "").to_string())),
                 3 => Some(Token::Arith(txt.chars().nth(0).unwrap())),
                 5 => Some(Token::ScopeStart(txt.chars().nth(0).unwrap())),
