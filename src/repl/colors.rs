@@ -8,33 +8,15 @@
 // GRAY = 90,
 // CYAN = 96,
 
-// impl fmt::Display for Colors {
-//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//         write!(f, "{:?}", self)
-//     }
-// }
 
 macro_rules! BLUE {
     ($plain_string:expr) => {format!("\x1B[1;36m{}\x1B[0m", $plain_string)};
 }
 
+macro_rules! GREEN {
+    ($plain_string:expr) => {format!("\x1B[1;32m{}\x1B[0m", $plain_string)};
+}
+
 // macro_rules! RED {
-//     ($plain_string:expr) => {
-//         format!("\033[{}m{}\033[0m", Colors::BLUE, $plain_string);
-//     }
-// }
-// macro_rules! BLUE {
-//     ($plain_string:expr) => {
-//         format!("\033[{}m{}\033[0m", Colors::BLUE, $plain_string);
-//     }
-// }
-// macro_rules! BLUE {
-//     ($plain_string:expr) => {
-//         format!("\033[{}m{}\033[0m", Colors::BLUE, $plain_string);
-//     }
-// }
-// macro_rules! BLUE {
-//     ($plain_string:expr) => {
-//         format!("\033[{}m{}\033[0m", Colors::BLUE, $plain_string);
-//     }
+//     ($plain_string:expr) => {format!("\x1B[1;31m{}\x1B[0m", $plain_string)};
 // }

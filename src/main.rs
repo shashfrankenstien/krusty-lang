@@ -2,6 +2,9 @@ use std::io::Read; // for read_to_string
 use std::fs;
 use std::path::PathBuf;
 use std::env; // required for print_verbose! macro
+use std::process;
+
+extern crate ctrlc;
 
 #[macro_use]
 pub mod macros;
@@ -16,6 +19,7 @@ mod lib {
     pub mod builtins;
 }
 
+#[macro_use]
 mod repl {
     #[macro_use]
     pub mod colors;
@@ -29,8 +33,15 @@ use repl::prompt;
 
 
 fn repl_prompt(ns: &mut NameSpace) {
+    println!("{}", GREEN!("Welcome to Krusty repl. Ctrl+C to exit!"));
     let cwd = env::current_dir().unwrap_or(PathBuf::from("."));
     ns.set_path(&cwd);
+
+    ctrlc::set_handler(move || {
+        println!("KeyboardInterrupt");
+        process::exit(0);
+    }).expect("Error setting Ctrl-C handler");
+
     let mut i = 0;
     loop {
         let buffer = prompt::prompt(i);
@@ -66,7 +77,6 @@ fn run_file(filepath: &PathBuf, ns: &mut NameSpace) -> parser::Obj {
 
 
 fn main() {
-    // Prints each argument on a separate line
     let argv: Vec<String> = env::args().collect();
     // println!("{:?}", argv.len());
     if argv.len() > 1 {
