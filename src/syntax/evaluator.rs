@@ -37,8 +37,9 @@ impl<'a> NameSpace<'a> {
     }
 
     pub fn run(&mut self, elist: &Vec<Expression>) -> Obj {
+        let mut return_val: Obj = Obj::Null;
         for (_i, o) in elist.iter().enumerate() {
-            let return_val = self.solve_expr(o);
+            return_val = self.solve_expr(o);
             if let Obj::Operator(Token::FuncReturn) = o.op {
                 if let None = self.parent {
                     panic!("cannot use return here!")
@@ -47,7 +48,7 @@ impl<'a> NameSpace<'a> {
                 }
             }
         }
-        Obj::Null
+        return_val
     }
 
 

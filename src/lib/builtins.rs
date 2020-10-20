@@ -37,6 +37,7 @@ impl fmt::Display for Obj {
                 write!(f, "{}", l[l.len()-1]).unwrap();
                 write!(f, ")")
             },
+            Obj::Mod(m) => write!(f, "<module at {:p}>", m),
             _ => write!(f, "{:?}", self),
         }
     }
@@ -112,7 +113,11 @@ pub fn _import(ns: &mut NameSpace, args: &Vec<Obj>) -> Obj {
             let p = match cur_path {
                 Some(pbuf) => {
                     let mut newbuf = pbuf.clone();
-                    newbuf.set_file_name(p);
+                    if newbuf.is_dir() {
+                        newbuf.push(p); // push new filename
+                    } else {
+                        newbuf.set_file_name(p); // replace filename
+                    }
                     newbuf.set_extension("kry");
                     newbuf
                 },
@@ -123,7 +128,7 @@ pub fn _import(ns: &mut NameSpace, args: &Vec<Obj>) -> Obj {
             let mut code = String::new();
             f.read_to_string(&mut code).expect("Can't read this");
 
-            let mut tokens = lexer::lex(code);
+            let mut tokens = lexer::lex(&code);
             let tree = parser::parse(&mut tokens);
 
             let mut new_ns = NameSpace::new(Some(ns));

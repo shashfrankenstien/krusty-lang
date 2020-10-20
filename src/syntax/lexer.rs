@@ -30,7 +30,7 @@ lazy_static! {
     static ref RE: RegexSet = RegexSet::new(&[
         r"^[\*]?[_a-zA-Z]+[_a-zA-Z0-9]*$", //symbol - 0
         r"^[+-]?[.\d]+$", //numbers - 1
-        r#"(^".*"$)|(^'.*'$)"#, //strings1 - 2
+        r#"(?s)(^".*"$)|(^'.*'$)"#, //strings - 2
         r#"^[+\-/\*]$"#, //Arith - 3
         r"^;$", //sep - 4
         r"^[({]$", //scopestart - 5
@@ -193,18 +193,20 @@ fn push_tweaked(tkn: Token, dest: &mut Vec<Token>) {
     dest.push(tkn);
 }
 
+fn trim_spaces(w: &String) -> &str {
+    w.trim_matches(&[' ', '\t'] as &[_])
+}
 
-
-pub fn lex(code: String) -> Scanner {
+pub fn lex(code: &String) -> Scanner {
 
     let mut word = String::new();
     let mut out: Vec<Token> = Vec::new();
     for c in code.chars() {
         word.push(c);
-        if !RE.is_match(&word.trim_matches(' ')) && (word.trim_matches(' ')!="") {
+        if !RE.is_match(trim_spaces(&word)) && (trim_spaces(&word)!="") {
             word.pop();
             // println!("{} {}", word, RE.is_match(&word));
-            match Token::create(&word.trim_matches(' ')) {
+            match Token::create(trim_spaces(&word)) {
                 Some(t) => {
                     print_verbose!("{:?}", t);
                     push_tweaked(t, &mut out);
@@ -216,7 +218,7 @@ pub fn lex(code: String) -> Scanner {
         }
     }
     if word.len() != 0 { // check remainder
-        match Token::create(&word.trim_matches(' ')) {
+        match Token::create(trim_spaces(&word)) {
             Some(t) => push_tweaked(t, &mut out),
             _ => ()
         }

@@ -3,7 +3,7 @@ for f in ./test_code/*.kry; do
     # remember to quote it or spaces may misbehave
     echo "\n+++++++++++++++++++++++++++++++++++++++++"
     echo "RUNNING "$f""
-    if [ $1 = "binary" ]; then
+    if [ "$1" = "binary" ]; then
         target/debug/krusty "$f"
     else
         cargo run "$f"
