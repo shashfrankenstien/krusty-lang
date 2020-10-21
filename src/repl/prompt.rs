@@ -1,26 +1,47 @@
 use std::io::{self, BufRead, Write};
 
-fn expr_is_complete(s: &String) -> bool {
-    let mut need_close = false;
-    let mut eol_found = false;
-    for c in s.chars() {
-        need_close = match (c, need_close) {
-            ('"', _) => !need_close,
-            ('(', false) => true, // stay open till ')'
-            ('[', false) => true, // stay open till ']'
-            ('{', false) => true, // stay open till '}'
-            (')', true) => false,
-            (']', true) => false,
-            ('}', true) => false,
-            (';', false) => {
-                eol_found = true;
-                need_close
-            },
-            (_,_) => need_close
-        }
-    };
-    eol_found && !need_close // if need_close is true, expression is not complete
+
+#[derive(Debug)]
+struct ExprTracker {
+    want_quote: Option<char>,
+    want_pair: Option<char>,
 }
+
+impl ExprTracker {
+    fn new() -> ExprTracker {
+        ExprTracker{want_quote:None, want_pair:None}
+    }
+
+    fn _match_pair(c: char) -> Option<char> {
+        match c {
+            '{'=> Some('}'),
+            '['=> Some(']'),
+            '('=> Some(')'),
+            _ => None
+        }
+    }
+
+    fn is_complete(&mut self, s: &String) -> bool {
+        for c in s.chars() {
+            if let Some(want) = self.want_quote {
+                self.want_quote = if want==c { None } else { Some(want) };
+            }
+            else if let Some(want) = self.want_pair {
+                self.want_pair = if want==c { None } else { Some(want) };
+            }
+            else if c == '"' || c == '\'' {
+                self.want_quote = Some(c);
+            } else if let Some(want) = ExprTracker::_match_pair(c) {
+                self.want_pair = Some(want);
+            }
+            else if c==';' {
+                return true; // want nothing, eol found
+            }
+        };
+        false
+    }
+}
+
 
 pub fn prompt(_line: i32) -> Option<String> {
     // print!("[{}]", BLUE!(_line));
@@ -32,8 +53,12 @@ pub fn prompt(_line: i32) -> Option<String> {
     let stdin = io::stdin();
     let mut handle = stdin.lock();
 
+    let mut expr_tracker = ExprTracker::new();
     let mut chars = handle.read_line(&mut buffer);
-    while chars.is_ok() && !expr_is_complete(&buffer) && buffer.trim()!="" {
+    while chars.is_ok() && buffer.trim()!="" {
+        if expr_tracker.is_complete(&buffer) {break;}
+        print!("{} ", BLUE!(".."));
+        io::stdout().flush().unwrap();
         chars = handle.read_line(&mut buffer);
     }
     // println!("{:?}", buffer);

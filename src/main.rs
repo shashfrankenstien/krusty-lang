@@ -33,7 +33,7 @@ use repl::prompt;
 
 
 fn repl_prompt(ns: &mut NameSpace) {
-    println!("{}", GREEN!("Welcome to Krusty repl. Ctrl+C to exit!"));
+    println!("{} {} {}", GREEN!("Welcome to Krusty"), "\u{1F980}", GREEN!("repl. Ctrl+C to exit!"));
     let cwd = env::current_dir().unwrap_or(PathBuf::from("."));
     ns.set_path(&cwd);
 
@@ -53,7 +53,7 @@ fn repl_prompt(ns: &mut NameSpace) {
                 let out = ns.run(&parsed);
                 match out {
                     parser::Obj::Null => (),
-                    _ => println!("{}", out)
+                    _ => println!("{}", ns.resolve(&out))
                 }
             }
         }

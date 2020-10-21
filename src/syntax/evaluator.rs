@@ -93,7 +93,7 @@ impl<'a> NameSpace<'a> {
         self.module.path = Some(srcdir)
     }
 
-    fn resolve(&mut self, o: &Obj) -> Obj {
+    pub fn resolve(&mut self, o: &Obj) -> Obj {
         match o {
             Obj::Expr(ex) => self.solve_expr(ex),
             Obj::Object(Token::Symbol(s)) => self.get(s).unwrap(),
