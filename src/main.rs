@@ -1,8 +1,9 @@
 use std::path::PathBuf;
+use path_slash::PathBufExt; // for PatjBuf::from_slash() trait
 use std::env; // required for print_verbose! macro
 use std::process;
 
-extern crate ctrlc;
+use ctrlc;
 
 #[macro_use]
 pub mod macros;
@@ -74,7 +75,7 @@ fn main() {
     let argv: Vec<String> = env::args().collect();
     // println!("{:?}", argv.len());
     if argv.len() > 1 {
-        let filepath = PathBuf::from(&argv[1]);
+        let filepath = PathBuf::from_slash(&argv[1]);
         if filepath.is_file() {
             let mut ns = NameSpace::new(None);
             let _vo = run_file(&filepath, &mut ns);

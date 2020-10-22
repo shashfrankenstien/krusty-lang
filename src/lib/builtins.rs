@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use path_slash::PathBufExt; // for PatjBuf::from_slash() trait
 use std::env; // required for print_verbose! macro
 use std::collections::HashMap;
 
@@ -112,7 +113,7 @@ pub fn _import(ns: &mut NameSpace, args: &Vec<Obj>) -> Obj {
                 Some(pbuf) => {
                     let mut newbuf = pbuf.clone();
                     if newbuf.is_dir() {
-                        newbuf.push(p); // push new filename
+                        newbuf.push(PathBuf::from_slash(p)); // push new filename
                     } else {
                         newbuf.set_file_name(p); // replace filename
                     }
@@ -121,7 +122,7 @@ pub fn _import(ns: &mut NameSpace, args: &Vec<Obj>) -> Obj {
                     }
                     newbuf
                 },
-                None => PathBuf::from(p)
+                None => PathBuf::from_slash(p)
             };
             print_verbose!("import({:?})", p);
             let mut tokens = lexer::lex_file(&p);
