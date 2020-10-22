@@ -3,6 +3,10 @@ use regex::RegexSet;
 use regex::Regex;
 use lazy_static::lazy_static;
 
+use std::io::Read; // for read_to_string
+use std::fs;
+use std::path::PathBuf;
+
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum Token {
@@ -225,4 +229,14 @@ pub fn lex(code: &String) -> Scanner {
     }
     print_verbose!("\\mm/      lex done!!!");
     Scanner::new(&out)
+}
+
+
+pub fn lex_file(filepath: &PathBuf) -> Scanner {
+    let filepath = fs::canonicalize(filepath).expect("No such File!");
+    let mut f = fs::File::open(filepath).expect("Oh, no such file!");
+    let mut code = String::new();
+    f.read_to_string(&mut code).expect("Can't read this");
+
+    lex(&code)
 }

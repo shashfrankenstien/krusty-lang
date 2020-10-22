@@ -1,5 +1,3 @@
-use std::io::Read; // for read_to_string
-use std::fs::File;
 use std::path::PathBuf;
 use std::env; // required for print_verbose! macro
 use std::collections::HashMap;
@@ -118,17 +116,15 @@ pub fn _import(ns: &mut NameSpace, args: &Vec<Obj>) -> Obj {
                     } else {
                         newbuf.set_file_name(p); // replace filename
                     }
-                    newbuf.set_extension("kry");
+                    if !newbuf.ends_with("kry") {
+                        newbuf.set_extension("kry");
+                    }
                     newbuf
                 },
                 None => PathBuf::from(p)
             };
             print_verbose!("import({:?})", p);
-            let mut f = File::open(&p).expect("Oh, no such file!");
-            let mut code = String::new();
-            f.read_to_string(&mut code).expect("Can't read this");
-
-            let mut tokens = lexer::lex(&code);
+            let mut tokens = lexer::lex_file(&p);
             let tree = parser::parse(&mut tokens);
 
             let mut new_ns = NameSpace::new(Some(ns));

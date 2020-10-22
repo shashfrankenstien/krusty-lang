@@ -1,5 +1,3 @@
-use std::io::Read; // for read_to_string
-use std::fs;
 use std::path::PathBuf;
 use std::env; // required for print_verbose! macro
 use std::process;
@@ -66,11 +64,7 @@ fn run_file(filepath: &PathBuf, ns: &mut NameSpace) -> parser::Obj {
     ns.set_path(&filepath);
     print_verbose!("Running {:?}", ns.get_path());
 
-    let mut f = fs::File::open(filepath).expect("Oh, no such file!");
-    let mut code = String::new();
-    f.read_to_string(&mut code).expect("Can't read this");
-
-    let mut tokens = lexer::lex(&code);
+    let mut tokens = lexer::lex_file(filepath);
     let tree = parser::parse(&mut tokens);
     ns.run(&tree)
 }
