@@ -115,7 +115,7 @@ pub fn _import(ns: &mut NameSpace, args: &Vec<Obj>) -> Obj {
                     if newbuf.is_dir() {
                         newbuf.push(PathBuf::from_slash(p)); // push new filename
                     } else {
-                        newbuf.set_file_name(p); // replace filename
+                        newbuf.set_file_name(PathBuf::from_slash(p)); // replace filename
                     }
                     if !newbuf.ends_with("kry") {
                         newbuf.set_extension("kry");
