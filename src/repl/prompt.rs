@@ -1,3 +1,4 @@
+use std::env;
 use std::io::{self, BufRead, Write};
 
 
@@ -21,10 +22,13 @@ impl ExprTracker {
         }
     }
 
-    fn is_complete(&mut self, s: &String) -> bool {
+    fn is_complete(&mut self, s: &str) -> bool {
         for c in s.chars() {
             if let Some(want) = self.want_quote {
-                self.want_quote = if want==c { None } else { Some(want) };
+                print_verbose!("Here! {} {}", want, c);
+                self.want_quote = if want==c {
+                    None
+                 } else { Some(want) };
             }
             else if let Some(want) = self.want_pair {
                 self.want_pair = if want==c { None } else { Some(want) };
@@ -54,11 +58,14 @@ pub fn prompt(_line: i32) -> Option<String> {
     let mut handle = stdin.lock();
 
     let mut expr_tracker = ExprTracker::new();
+    let mut tot_chars = 0;
     let mut chars = handle.read_line(&mut buffer);
     while chars.is_ok() && buffer.trim()!="" {
-        if expr_tracker.is_complete(&buffer) {break;}
+        if expr_tracker.is_complete(&buffer[tot_chars..]) {break;}
+        print_verbose!("{:?}", expr_tracker);
         print!("{} ", BLUE!(".."));
         io::stdout().flush().unwrap();
+        tot_chars += chars.unwrap();
         chars = handle.read_line(&mut buffer);
     }
     // println!("{:?}", buffer);
