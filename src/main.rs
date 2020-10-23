@@ -31,8 +31,11 @@ use syntax::evaluator::NameSpace;
 use repl::prompt;
 
 
+const VERSION_STR: &'static str = env!("CARGO_PKG_VERSION");
+
+
 fn repl_prompt(ns: &mut NameSpace) {
-    println!("{} {} {}", GREEN!("Welcome to Krusty"), "\u{1F980}", GREEN!("repl. Ctrl+C to exit!"));
+    println!("{} {} {} {}", GREEN!("Welcome to Krusty"), GREEN!(VERSION_STR), "\u{1F980}", GREEN!("repl. Ctrl+C to exit!"));
     let cwd = env::current_dir().unwrap_or(PathBuf::from("."));
     ns.set_path(&cwd);
 
