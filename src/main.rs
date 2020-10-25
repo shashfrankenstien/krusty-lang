@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 use path_slash::PathBufExt; // for PatjBuf::from_slash() trait
 use std::env; // required for print_verbose! macro
+use std::panic;
 
 #[macro_use]
 pub mod macros;
@@ -43,15 +44,20 @@ fn repl_prompt(ns: &mut NameSpace) {
         match buffer {
             Ok(buf) if buf.trim().len() == 0 => (),
             Ok(buf) => {
-                let mut tokens = lexer::lex(&buf);
-                let parsed = parser::parse(&mut tokens);
-                let out = ns.run(&parsed);
-                match out {
-                    parser::Obj::Null => (),
-                    _ => println!("{}", ns.resolve(&out))
+                let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+                    let mut tokens = lexer::lex(&buf);
+                    let parsed = parser::parse(&mut tokens);
+                    let out = ns.run(&parsed);
+                    match out {
+                        parser::Obj::Null => (),
+                        _ => println!("{}", ns.resolve(&out))
+                    }
+                }));
+                if result.is_err() {
+                    println!("{}", RED!("Error in expression!"));
                 }
             },
-            Err(e) => {
+            Err(e) => { // ctrl-c or ctrl-d
                 println!("{}", RED!(e.to_string()));
                 break;
             }
