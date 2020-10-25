@@ -1,6 +1,6 @@
 use std::env;
-use std::io::{self, BufRead, Write};
 
+use rustyline::{self, error::ReadlineError};
 
 #[derive(Debug)]
 struct ExprTracker {
@@ -47,31 +47,22 @@ impl ExprTracker {
 }
 
 
-pub fn prompt(_line: i32) -> Option<String> {
-    // print!("[{}]", BLUE!(_line));
-    print!("{} ", BLUE!(">>"));
-    // print!("\u{1F980}");
-
-    io::stdout().flush().unwrap();
-    let mut buffer = String::new();
-    let stdin = io::stdin();
-    let mut handle = stdin.lock();
+pub fn prompt(rl: &mut rustyline::Editor::<()>, _line: i32) -> Result<String, ReadlineError> {
 
     let mut expr_tracker = ExprTracker::new();
     let mut tot_chars = 0;
-    let mut chars = handle.read_line(&mut buffer);
-    while chars.is_ok() && buffer.trim()!="" {
+
+    let mut buffer = rl.readline(&BLUE!(">> "))?;
+    let mut chars = buffer.len();
+    while buffer.trim()!="" {
         if expr_tracker.is_complete(&buffer[tot_chars..]) {break;}
         print_verbose!("{:?}", expr_tracker);
-        print!("{} ", BLUE!(".."));
-        io::stdout().flush().unwrap();
-        tot_chars += chars.unwrap();
-        chars = handle.read_line(&mut buffer);
+        let more = rl.readline(&BLUE!(".."))?;
+        buffer.push_str(&more);
+        tot_chars += chars;
+        chars = more.len();
     }
     // println!("{:?}", buffer);
-    if chars.is_ok() {
-        Some(buffer)
-    } else {
-        None
-    }
+    rl.add_history_entry(buffer.as_str());
+    Ok(buffer)
 }

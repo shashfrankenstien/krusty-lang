@@ -1,9 +1,6 @@
 use std::path::PathBuf;
 use path_slash::PathBufExt; // for PatjBuf::from_slash() trait
 use std::env; // required for print_verbose! macro
-use std::process;
-
-use ctrlc;
 
 #[macro_use]
 pub mod macros;
@@ -39,17 +36,14 @@ fn repl_prompt(ns: &mut NameSpace) {
     let cwd = env::current_dir().unwrap_or(PathBuf::from("."));
     ns.set_path(&cwd);
 
-    ctrlc::set_handler(move || {
-        println!("KeyboardInterrupt");
-        process::exit(0);
-    }).expect("Error setting Ctrl-C handler");
-
     let mut i = 0;
+    // `()` can be used when no completer is required
+    let mut rl = rustyline::Editor::<()>::new();
     loop {
-        let buffer = prompt::prompt(i);
+        let buffer = prompt::prompt(&mut rl, i);
         match buffer {
-            None => (),
-            Some(buf) => {
+            Ok(buf) if buf.trim().len() == 0 => (),
+            Ok(buf) => {
                 let mut tokens = lexer::lex(&buf);
                 let parsed = parser::parse(&mut tokens);
                 let out = ns.run(&parsed);
@@ -57,6 +51,10 @@ fn repl_prompt(ns: &mut NameSpace) {
                     parser::Obj::Null => (),
                     _ => println!("{}", ns.resolve(&out))
                 }
+            },
+            Err(e) => {
+                println!("{:?}", e);
+                break;
             }
         }
         i += 1;
