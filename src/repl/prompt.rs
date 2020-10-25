@@ -3,14 +3,21 @@ use std::env;
 use rustyline::{self, error::ReadlineError};
 
 #[derive(Debug)]
-struct ExprTracker {
+pub struct Prompt {
+    cli: rustyline::Editor::<()>,
     want_quote: Option<char>,
     want_pair: Option<char>,
+    line_count: i32,
 }
 
-impl ExprTracker {
-    fn new() -> ExprTracker {
-        ExprTracker{want_quote:None, want_pair:None}
+impl Prompt {
+    pub fn new() -> Prompt {
+        Prompt{
+            cli: rustyline::Editor::<()>::new(),
+            want_quote: None,
+            want_pair: None,
+            line_count: 0,
+        }
     }
 
     fn _match_pair(c: char) -> Option<char> {
@@ -35,7 +42,7 @@ impl ExprTracker {
             }
             else if c == '"' || c == '\'' {
                 self.want_quote = Some(c);
-            } else if let Some(want) = ExprTracker::_match_pair(c) {
+            } else if let Some(want) = Prompt::_match_pair(c) {
                 self.want_pair = Some(want);
             }
             else if c==';' {
@@ -44,25 +51,29 @@ impl ExprTracker {
         };
         false
     }
-}
 
+    pub fn read_expr(&mut self) -> Result<String, ReadlineError> {
+        self.want_quote = None;
+        self.want_pair = None;
+        let mut tot_chars = 0;
 
-pub fn prompt(rl: &mut rustyline::Editor::<()>, _line: i32) -> Result<String, ReadlineError> {
-
-    let mut expr_tracker = ExprTracker::new();
-    let mut tot_chars = 0;
-
-    let mut buffer = rl.readline(&BLUE!(">> "))?;
-    let mut chars = buffer.len();
-    while buffer.trim()!="" {
-        if expr_tracker.is_complete(&buffer[tot_chars..]) {break;}
-        print_verbose!("{:?}", expr_tracker);
-        let more = rl.readline(&BLUE!(".."))?;
-        buffer.push_str(&more);
-        tot_chars += chars;
-        chars = more.len();
+        let mut buffer = self.cli.readline(&BLUE!(">> "))?;
+        let mut chars = buffer.len();
+        while buffer.trim()!="" {
+            buffer.push('\n'); // rustyline removes newline character. Adding one back here
+            tot_chars += 1;
+            if self.is_complete(&buffer[tot_chars..]) {break;}
+            print_verbose!("want_quote: {:?}, want_pair: {:?}", self.want_quote, self.want_pair);
+            let more = self.cli.readline(&BLUE!(".. "))?;
+            buffer.push_str(&more);
+            tot_chars += chars;
+            chars = more.len();
+        }
+        // println!("{:?}", buffer);
+        self.cli.add_history_entry(buffer.as_str());
+        Ok(buffer)
     }
-    // println!("{:?}", buffer);
-    rl.add_history_entry(buffer.as_str());
-    Ok(buffer)
 }
+
+
+

@@ -36,11 +36,10 @@ fn repl_prompt(ns: &mut NameSpace) {
     let cwd = env::current_dir().unwrap_or(PathBuf::from("."));
     ns.set_path(&cwd);
 
-    let mut i = 0;
     // `()` can be used when no completer is required
-    let mut rl = rustyline::Editor::<()>::new();
+    let mut cli = prompt::Prompt::new();
     loop {
-        let buffer = prompt::prompt(&mut rl, i);
+        let buffer = cli.read_expr();
         match buffer {
             Ok(buf) if buf.trim().len() == 0 => (),
             Ok(buf) => {
@@ -53,11 +52,10 @@ fn repl_prompt(ns: &mut NameSpace) {
                 }
             },
             Err(e) => {
-                println!("{:?}", e);
+                println!("{}", RED!(e.to_string()));
                 break;
             }
         }
-        i += 1;
     }
 }
 
