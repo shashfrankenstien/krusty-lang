@@ -1,6 +1,5 @@
 use std::env; // required for print_verbose! macro
 use regex::RegexSet;
-use regex::Regex;
 use lazy_static::lazy_static;
 
 use std::io::Read; // for read_to_string
@@ -50,13 +49,9 @@ lazy_static! {
 
     static ref RE_PASS: RegexSet = RegexSet::new(&[
         // continue parsing token if the following are encontered
-        r#"^('|")[^'"]*$"#, //start of string
+        r#"^('[^']*|"[^"]*)$"#, //start of string
         r#"^(\[|\[['"])[^'"\]]*$"#, //start of index operation
     ]).unwrap();
-
-    // Some parsing helpers
-    static ref RE_QUOTES: Regex = Regex::new(r#"['"]"#).unwrap(); // for strings
-    static ref RE_SQ_BRACKETS: Regex = Regex::new(r"[\[\]]").unwrap(); // for indexing operator
 }
 
 
@@ -65,6 +60,7 @@ lazy_static! {
 impl Token {
 
     fn _which_matched(txt: &str) -> Option<Token> {
+        // println!("{}", txt);
         let m: Vec<_> = RE.matches(txt).into_iter().collect();
         if !m.is_empty() {
             return match m[0] {
@@ -74,7 +70,7 @@ impl Token {
                 1 if txt == "." => Some(Token::Accessor), // hacky workaround due to lack of regex lookaround
                 1 => Some(Token::Number(txt.parse().expect("This is not a number"))),
 
-                2 => Some(Token::Text(RE_QUOTES.replace_all(txt, "").to_string())),
+                2 => Some(Token::Text(txt[1..txt.len()-1].to_string())),
                 3 => Some(Token::Arith(txt.chars().nth(0).unwrap())),
                 5 => Some(Token::ScopeStart(txt.chars().nth(0).unwrap())),
                 6 => Some(Token::ScopeEnd(txt.chars().nth(0).unwrap())),
@@ -84,7 +80,7 @@ impl Token {
                 9 => Some(Token::Assign),
                 10 => Some(Token::_Comment),
                 11 => Some(Token::_NewLine),
-                12 => Some(Token::Index(Box::new(Token::create(&RE_SQ_BRACKETS.replace_all(txt, "")).unwrap()))),
+                12 => Some(Token::Index(Box::new(Token::create(&txt[1..txt.len()-1]).unwrap()))),
                 13 => Some(Token::Comparison(txt.to_string())),
                 _ => None
             }
@@ -207,7 +203,7 @@ pub fn lex(code: &String) -> Scanner {
     let mut out: Vec<Token> = Vec::new();
     for c in code.chars() {
         word.push(c);
-        if !RE.is_match(trim_spaces(&word)) && (trim_spaces(&word)!="") {
+        if trim_spaces(&word).len()>1 && !RE.is_match(trim_spaces(&word)) {
             word.pop();
             // println!("{} {}", word, RE.is_match(&word));
             match Token::create(trim_spaces(&word)) {

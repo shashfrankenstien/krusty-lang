@@ -25,7 +25,7 @@ impl ExprTracker {
     fn is_complete(&mut self, s: &str) -> bool {
         for c in s.chars() {
             if let Some(want) = self.want_quote {
-                print_verbose!("Here! {} {}", want, c);
+                // print_verbose!("Here! {} {}", want, c);
                 self.want_quote = if want==c {
                     None
                  } else { Some(want) };
