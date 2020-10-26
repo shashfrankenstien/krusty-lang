@@ -119,9 +119,9 @@ pub struct Scanner {
 }
 
 impl Scanner {
-    pub fn new(tokens: &Vec<Token>) -> Scanner {
+    pub fn from_tokens(tokens: Vec<Token>) -> Scanner {
         Scanner {
-            tokens:tokens.to_vec(),
+            tokens,
             _pointer:0,
         }
     }
@@ -179,7 +179,7 @@ impl Scanner {
 
 fn push_tweaked(tkn: Token, dest: &mut Vec<Token>) {
     match &tkn {
-        Token::ScopeStart(_) => {
+        Token::ScopeStart('(') => {
             if let Token::Symbol(_) = dest[dest.len()-1] { // symbol + scope start = func call
                 dest.push(Token::FuncCall);
             }
@@ -224,7 +224,7 @@ pub fn lex(code: &String) -> Scanner {
         }
     }
     print_verbose!("\\mm/      lex done!!!");
-    Scanner::new(&out)
+    Scanner::from_tokens(out)
 }
 
 

@@ -1,6 +1,11 @@
 use std::env;
+use std::ops::Drop;
 
-use rustyline::{self, error::ReadlineError};
+use rustyline::{self, error::ReadlineError, config::Configurer};
+
+const HISTFILE: &'static str = "history.txt";
+const HISTLEN: usize = 20;
+
 
 #[derive(Debug)]
 pub struct Prompt {
@@ -12,8 +17,11 @@ pub struct Prompt {
 
 impl Prompt {
     pub fn new() -> Prompt {
+        let mut cli = rustyline::Editor::<()>::new();
+        cli.set_max_history_size(HISTLEN);
+        cli.load_history(HISTFILE).unwrap_or(());
         Prompt{
-            cli: rustyline::Editor::<()>::new(),
+            cli,
             want_quote: None,
             want_pair: None,
             line_count: 0,
@@ -33,11 +41,10 @@ impl Prompt {
         for c in s.chars() {
             if let Some(want) = self.want_quote {
                 // print_verbose!("Here! {} {}", want, c);
-                self.want_quote = if want==c {
-                    None
-                 } else { Some(want) };
+                self.want_quote = if want==c { None } else { Some(want) };
             }
             else if let Some(want) = self.want_pair {
+                // print_verbose!("Here! {} {}", want, c);
                 self.want_pair = if want==c { None } else { Some(want) };
             }
             else if c == '"' || c == '\'' {
@@ -61,19 +68,23 @@ impl Prompt {
         let mut chars = buffer.len();
         while buffer.trim()!="" {
             buffer.push('\n'); // rustyline removes newline character. Adding one back here
-            tot_chars += 1;
             if self.is_complete(&buffer[tot_chars..]) {break;}
             print_verbose!("want_quote: {:?}, want_pair: {:?}", self.want_quote, self.want_pair);
             let more = self.cli.readline(&BLUE!(".. "))?;
             buffer.push_str(&more);
-            tot_chars += chars;
+            tot_chars += chars + 1; // +1 for the added newline
             chars = more.len();
         }
         // println!("{:?}", buffer);
-        self.cli.add_history_entry(buffer.as_str());
+        self.cli.add_history_entry(buffer.trim());
         Ok(buffer)
     }
 }
 
+impl Drop for Prompt {
+    fn drop(&mut self) {
+        self.cli.save_history(HISTFILE).unwrap();
+    }
+}
 
 

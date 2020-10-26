@@ -37,7 +37,6 @@ fn repl_prompt(ns: &mut NameSpace) {
     let cwd = env::current_dir().unwrap_or(PathBuf::from("."));
     ns.set_path(&cwd);
 
-    // `()` can be used when no completer is required
     let mut cli = prompt::Prompt::new();
     loop {
         let buffer = cli.read_expr();
