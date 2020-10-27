@@ -21,6 +21,7 @@
 // }
 
 
+#[allow(unused_macros)]
 macro_rules! BLUE {
     ($plain_string:expr) => {format!("\x1B[1;36m{}\x1B[0m", $plain_string)};
 }

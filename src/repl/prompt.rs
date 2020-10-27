@@ -64,13 +64,22 @@ impl Prompt {
         self.want_pair = None;
         let mut tot_chars = 0;
 
+        #[cfg(windows)]
+        let mut buffer = self.cli.readline(">> ")?; // color prompt on windows has length mesurement issues
+        #[cfg(not(windows))]
         let mut buffer = self.cli.readline(&BLUE!(">> "))?;
+
         let mut chars = buffer.len();
         while buffer.trim()!="" {
             buffer.push('\n'); // rustyline removes newline character. Adding one back here
             if self.is_complete(&buffer[tot_chars..]) {break;}
             print_verbose!("want_quote: {:?}, want_pair: {:?}", self.want_quote, self.want_pair);
+
+            #[cfg(windows)]
+            let more = self.cli.readline(".. ")?; // color prompt on windows has length mesurement issues
+            #[cfg(not(windows))]
             let more = self.cli.readline(&BLUE!(".. "))?;
+
             buffer.push_str(&more);
             tot_chars += chars + 1; // +1 for the added newline
             chars = more.len();
