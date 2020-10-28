@@ -10,8 +10,7 @@ const HISTLEN: usize = 20;
 #[derive(Debug)]
 pub struct Prompt {
     cli: rustyline::Editor::<()>,
-    want_quote: Option<char>,
-    want_pair: Option<char>,
+    want_pair: Vec<char>,
     line_count: i32,
 }
 
@@ -22,8 +21,7 @@ impl Prompt {
         cli.load_history(HISTFILE).unwrap_or(());
         Prompt{
             cli,
-            want_quote: None,
-            want_pair: None,
+            want_pair: Vec::new(),
             line_count: 0,
         }
     }
@@ -33,26 +31,21 @@ impl Prompt {
             '{'=> Some('}'),
             '['=> Some(']'),
             '('=> Some(')'),
+            '"' => Some('"'),
+            '\'' => Some('\''),
             _ => None
         }
     }
 
     fn is_complete(&mut self, s: &str) -> bool {
         for c in s.chars() {
-            if let Some(want) = self.want_quote {
-                // print_verbose!("Here! {} {}", want, c);
-                self.want_quote = if want==c { None } else { Some(want) };
+            if self.want_pair.len() > 0 && c == self.want_pair[self.want_pair.len()-1] {
+                self.want_pair.pop();
             }
-            else if let Some(want) = self.want_pair {
-                // print_verbose!("Here! {} {}", want, c);
-                self.want_pair = if want==c { None } else { Some(want) };
+            else if let Some(want) = Prompt::_match_pair(c) {
+                self.want_pair.push(want);
             }
-            else if c == '"' || c == '\'' {
-                self.want_quote = Some(c);
-            } else if let Some(want) = Prompt::_match_pair(c) {
-                self.want_pair = Some(want);
-            }
-            else if c==';' {
+            else if self.want_pair.len() == 0 && c==';' {
                 return true; // want nothing, eol found
             }
         };
@@ -60,8 +53,7 @@ impl Prompt {
     }
 
     pub fn read_expr(&mut self) -> Result<String, ReadlineError> {
-        self.want_quote = None;
-        self.want_pair = None;
+        self.want_pair.clear();
         let mut tot_chars = 0;
 
         #[cfg(windows)]
@@ -73,7 +65,7 @@ impl Prompt {
         while buffer.trim()!="" {
             buffer.push('\n'); // rustyline removes newline character. Adding one back here
             if self.is_complete(&buffer[tot_chars..]) {break;}
-            print_verbose!("want_quote: {:?}, want_pair: {:?}", self.want_quote, self.want_pair);
+            print_verbose!("want_pair: {:?}", self.want_pair);
 
             #[cfg(windows)]
             let more = self.cli.readline(".. ")?; // color prompt on windows has length mesurement issues
