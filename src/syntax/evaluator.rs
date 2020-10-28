@@ -13,7 +13,7 @@ use crate::lib::builtins;
 pub struct NameSpace<'a> {
     builtin_funcs: Option<HashMap<String, Obj>>,
     parent: Option<&'a NameSpace<'a>>,
-    module: Module,
+    pub module: Module,
 }
 
 

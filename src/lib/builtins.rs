@@ -30,10 +30,12 @@ impl fmt::Display for Obj {
             Obj::Null => write!(f, "null"),
             Obj::List(l) => {
                 write!(f, "(").unwrap();
-                for i in 0..(l.len()-1) {
-                    write!(f, "{},", l[i]).unwrap();
-                };
-                write!(f, "{}", l[l.len()-1]).unwrap();
+                if l.len() > 0 {
+                    for i in 0..(l.len()-1) {
+                        write!(f, "{},", l[i]).unwrap();
+                    };
+                    write!(f, "{}", l[l.len()-1]).unwrap();
+                }
                 write!(f, ")")
             },
             Obj::Mod(m) => write!(f, "<module at {:p}>", m),
@@ -154,7 +156,7 @@ pub fn _len(_: &mut NameSpace, args: &Vec<Obj>) -> Obj {
 
 pub fn _foreach(ns: &mut NameSpace, args: &Vec<Obj>) -> Obj {
     if args.len() != 2 {
-        panic!("can only import one at a time for now")
+        panic!("illegal number of arguments. Expected 2")
     }
     if let Obj::Func(_) | Obj::BuiltinFunc(_) = &args[1] {
         let res: Vec<Obj>;
@@ -177,6 +179,29 @@ pub fn _foreach(ns: &mut NameSpace, args: &Vec<Obj>) -> Obj {
     }
 }
 
+// ================ module inspect ================
+
+pub fn _vars(ns: &mut NameSpace, args: &Vec<Obj>) -> Obj {
+    if args.len() > 1 {
+        panic!("illegal number of arguments. Expected 0 or 1")
+    }
+    let mut vars: Vec<Obj> = Vec::new();
+    if args.len() == 0 {
+        for (k,_) in &ns.module.vars {
+            vars.push(Obj::Object(Token::Text(k.clone())));
+        }
+        Obj::List(vars)
+    }
+    else if let Obj::Mod(m) = &args[0] {
+        for (k,_) in &m.vars {
+            vars.push(Obj::Object(Token::Text(k.clone())));
+        }
+        Obj::List(vars)
+    } else {
+        Obj::Null
+    }
+}
+
 
 // ================ namespace helper functions ====================
 
@@ -192,6 +217,8 @@ pub fn load(env_bi: &mut HashMap<String, Obj>) {
     env_bi.insert("import".to_string(), Obj::BuiltinFunc("import".to_string()));
     env_bi.insert("len".to_string(), Obj::BuiltinFunc("len".to_string()));
     env_bi.insert("foreach".to_string(), Obj::BuiltinFunc("foreach".to_string()));
+
+    env_bi.insert("vars".to_string(), Obj::BuiltinFunc("vars".to_string()));
 }
 
 pub fn find_func(name: &str) -> fn(&mut NameSpace, &Vec<Obj>) -> Obj {
@@ -202,6 +229,7 @@ pub fn find_func(name: &str) -> fn(&mut NameSpace, &Vec<Obj>) -> Obj {
         "import" => _import,
         "len" => _len,
         "foreach" => _foreach,
+        "vars" => _vars,
         _ => panic!("'{}' not found", name)
     }
 }

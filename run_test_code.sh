@@ -4,10 +4,13 @@ for f in ./test_code/*.kry; do
     echo "\n+++++++++++++++++++++++++++++++++++++++++"
     echo "RUNNING "$f""
     if [ "$1" = "binary" ]; then
-        target/debug/krusty "$f"
+        target/debug/krusty "$f" || exit 1
     else
-        cargo run "$f"
+        cargo run "$f" || exit 1
     fi
     echo "+++++++++++++++++++++++++++++++++++++++++\n"
     # sleep 1
 done
+
+echo "success!!!"
+exit 0
