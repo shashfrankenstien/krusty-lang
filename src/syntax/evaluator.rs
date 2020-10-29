@@ -255,6 +255,11 @@ impl<'a> NameSpace<'a> {
             Obj::Operator(Token::FuncCall) => {
                 match &exp.elems[0] {
                     Obj::Object(Token::Symbol(func_name)) => self.eval_func(func_name, &exp.elems[1]),
+                    Obj::Func(_) => self.eval_func_obj(&exp.elems[0], &exp.elems[1], None),
+                    Obj::Expr(ex) => {
+                        let func = self.solve_expr(&ex);
+                        self.eval_func_obj(&func, &exp.elems[1], None)
+                    },
                     _ => Obj::Null,
                 }
             },

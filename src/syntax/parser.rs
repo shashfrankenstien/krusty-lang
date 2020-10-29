@@ -199,6 +199,16 @@ impl Expression {
         elem_count
     }
 
+    fn _convert_to_child_elem(&mut self) {
+        // make copy of current self, clear self and add the copy as first elem
+        let exp = Expression {
+            op: self.op.clone(),
+            elems: self.elems.clone(),
+        };
+        self.elems.clear();
+        self.elems.push(exp.to_object());
+    }
+
     fn parse(&mut self, tokens: &mut lexer::Scanner, end: Option<lexer::Token>) {
         // println!("-->");
         // println!("{:?}", tokens);
@@ -352,14 +362,16 @@ impl Expression {
                             if self.elems.len() == 0 {
                                 panic!("Suffix [] without symbol or expression");
                             }
-                            // make copy of current self, clear self and add the copy as first elem
-                            let mut exp = Expression {
-                                op: self.op.clone(),
-                                elems: self.elems.clone(),
-                            };
-                            exp.op = Obj::Operator(op);
-                            self.elems.clear();
-                            self.elems.push(exp.to_object());
+                            self._convert_to_child_elem();
+                            self.op = Obj::Operator(op);
+                        },
+
+                        (_, lexer::Token::FuncCall) => {
+                            if self.elems.len() == 0 {
+                                panic!("Function call without symbol or expression");
+                            }
+                            self._convert_to_child_elem();
+                            self.op = Obj::Operator(op);
                         },
 
                         _ => { // fallback sequence
