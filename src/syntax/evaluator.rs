@@ -211,11 +211,11 @@ impl<'a> NameSpace<'a> {
         }
     }
 
-    fn pick_index(&self, idx: &Token, things: &Obj) -> Obj {
+    fn pick_index(&self, idx: &Obj, things: &Obj) -> Obj {
         // println!("{:?} [{:?}]", things, idx);
         match (idx, things) {
-            (Token::Number(n), Obj::List(a)) => a[*n as usize].clone(),
-            (Token::Number(n), Obj::Object(Token::Text(a))) => Obj::Object(Token::Text(a.chars().nth(*n as usize).unwrap().to_string())),
+            (Obj::Object(Token::Number(n)), Obj::List(a)) => a[*n as usize].clone(),
+            (Obj::Object(Token::Number(n)), Obj::Object(Token::Text(a))) => Obj::Object(Token::Text(a.chars().nth(*n as usize).unwrap().to_string())),
             _ => panic!("cannot index {:?} with {:?}", things, idx)
         }
         // Obj::Null
@@ -278,12 +278,13 @@ impl<'a> NameSpace<'a> {
                     _ => Obj::List(ret_list)
                 }
             },
-            Obj::Operator(Token::Index(idx)) => {
-                if exp.elems.len() != 1 {
+            Obj::Operator(Token::Index) => {
+                if exp.elems.len() != 2 {
                     panic!("Illegal index operation");
                 }
                 let val = self.resolve(&exp.elems[0]);
-                self.pick_index(idx, &val)
+                let idx = self.resolve(&exp.elems[1]);
+                self.pick_index(&idx, &val)
             },
             Obj::Operator(Token::Accessor) => {
                 if exp.elems.len() != 2 {

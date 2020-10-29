@@ -21,7 +21,7 @@ pub enum Token {
     FuncCall,
     FuncReturn,
     List,
-    Index(Box<Token>),
+    Index,
     Assign,
     Accessor,
     _Comment,
@@ -36,21 +36,19 @@ lazy_static! {
         r#"(?s)(^".*"$)|(^'.*'$)"#, //strings - 2
         r#"^[+\-/\*]$"#, //Arith - 3
         r"^;$", //sep - 4
-        r"^[({]$", //scopestart - 5
-        r"^[})]$", //scopeend - 6
+        r"^[({\[]$", //scopestart - 5
+        r"^[})\]]$", //scopeend - 6
         r"^=>$", //funcDef - 7
         r"^,$", //List - 8
         r"^=$", //assign - 9
         r"^#.*$", //comment - 10
         r"^(\r\n|\r|\n)$", //newline - 11
-        r#"^\[.*\]$"#, //index operation - 12
-        r#"^(==|!=|<|<=|>|>=)$"#, //comparison operation - 13
+        r#"^(==|!=|<|<=|>|>=)$"#, //comparison operation - 12
     ]).unwrap();
 
     static ref RE_PASS: RegexSet = RegexSet::new(&[
         // continue parsing token if the following are encontered
         r#"^('[^']*|"[^"]*)$"#, //start of string
-        r#"^(\[|\[['"])[^'"\]]*$"#, //start of index operation
     ]).unwrap();
 }
 
@@ -80,8 +78,7 @@ impl Token {
                 9 => Some(Token::Assign),
                 10 => Some(Token::_Comment),
                 11 => Some(Token::_NewLine),
-                12 => Some(Token::Index(Box::new(Token::create(&txt[1..txt.len()-1]).unwrap()))),
-                13 => Some(Token::Comparison(txt.to_string())),
+                12 => Some(Token::Comparison(txt.to_string())),
                 _ => None
             }
         } else {
@@ -180,17 +177,24 @@ impl Scanner {
 fn push_tweaked(tkn: Token, dest: &mut Vec<Token>) {
     match &tkn {
         Token::ScopeStart('(') => {
-            if let Token::Symbol(_) = dest[dest.len()-1] { // symbol + scope start = func call
-                dest.push(Token::FuncCall);
+            // if let Token::Symbol(_) | Token::ScopeEnd(_) = dest[dest.len()-1] { // symbol + scope start = func call
+            if dest.len() > 0 {
+                if let Token::Symbol(_) = dest[dest.len()-1] { // symbol + scope start = func call
+                    dest.push(Token::FuncCall);
+                }
             }
+            dest.push(tkn);
+        },
+        Token::ScopeStart('[') => {
+            dest.push(Token::Index);
+            dest.push(tkn);
         },
         Token::Symbol(s) if s == "ret" => {
             dest.push(Token::FuncReturn);
             return
         },
-        _ => ()
+        _ => dest.push(tkn)
     };
-    dest.push(tkn);
 }
 
 fn trim_spaces(w: &String) -> &str {

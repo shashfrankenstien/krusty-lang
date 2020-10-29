@@ -66,7 +66,7 @@ impl Obj {
                 | Token::List
                 | Token::FuncCall
                 | Token::FuncReturn
-                | Token::Index(_)
+                | Token::Index
                 | Token::Accessor
                 => Obj::Operator(tok.clone()),
 
@@ -237,6 +237,15 @@ impl Expression {
                             let scoped = Expression::parse_scope(tokens, Some(lexer::Token::ScopeEnd('}')));
                             Obj::ModBody(scoped) // same definition as FuncBody, but evaluated differently
                         },
+                        '[' => {
+                            if let Obj::Operator(lexer::Token::Index) = self.op {
+                                let mut ex = Expression::new();
+                                ex.parse(tokens, Some(lexer::Token::ScopeEnd(']')));
+                                ex.to_object()
+                            } else {
+                                panic!("Illegal use of [] operator");
+                            }
+                        },
                         '(' => {
                             print_verbose!(">>>>>>>>>>> {:?} {:?}", &end, self);
                             let mut ex_list = Expression::new();
@@ -305,8 +314,8 @@ impl Expression {
                             };
                             // break; // function definition complete
                         } else {
-                            print_verbose!(" ++++++++++ {:?} {:?}", self, exp_obj);
                             self.elems.push(exp_obj);
+                            print_verbose!(" ++++++++++ {:?}", self);
                         }
                     } else {
                         self.elems.push(exp_obj);
@@ -339,13 +348,17 @@ impl Expression {
                             self.op = Obj::Operator(op)
                         },
 
-                        (_, lexer::Token::Index(i)) => {
+                        (_, lexer::Token::Index) => {
                             if self.elems.len() == 0 {
-                                panic!("Suffix [{}] without symbol or expression", i);
+                                panic!("Suffix [] without symbol or expression");
                             }
-                            let mut exp = Expression::new();
-                            exp.elems.push(self.elems.pop().unwrap()); // setup object to apply suffix operator to
+                            // make copy of current self, clear self and add the copy as first elem
+                            let mut exp = Expression {
+                                op: self.op.clone(),
+                                elems: self.elems.clone(),
+                            };
                             exp.op = Obj::Operator(op);
+                            self.elems.clear();
                             self.elems.push(exp.to_object());
                         },
 
