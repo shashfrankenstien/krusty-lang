@@ -366,7 +366,8 @@ impl Expression {
                             self.op = Obj::Operator(op);
                         },
 
-                        (_, lexer::Token::FuncCall) => {
+                        (Obj::Operator(lexer::Token::FuncCall), lexer::Token::FuncCall) => {
+                            // other cases where self.op is not FuncCall are automatically handled
                             if self.elems.len() == 0 {
                                 panic!("Function call without symbol or expression");
                             }

@@ -52,6 +52,13 @@ print( "add2", add2(5) );
 comp = 7.15 >= add2(5);
 print(comp);
 
-# forEach = (list, len, f) => {
 
-# }
+print("call func without assignment");
+a = true;
+(x)=>{print(x);}(a); # call func without assignment
+
+
+a = true;
+if(a==true, print, (x)=>{
+    print(type(x));
+})(a);
