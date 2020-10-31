@@ -4,35 +4,23 @@ use std::env; // required for print_verbose! macro
 use std::panic;
 
 #[macro_use]
-pub mod macros;
-
-mod syntax {
-    pub mod lexer;
-    pub mod parser;
-    pub mod evaluator;
-}
-
-mod lib {
-    pub mod builtins;
-}
-
-#[macro_use]
 mod repl {
     #[macro_use]
     pub mod colors;
     pub mod prompt;
 }
 
-use syntax::lexer;
-use syntax::parser;
-use syntax::evaluator::NameSpace;
 use repl::prompt;
 
+#[macro_use] extern crate krusty_core;
+use krusty_core::syntax::lexer;
+use krusty_core::syntax::parser;
+use krusty_core::syntax::evaluator;
 
 const VERSION_STR: &'static str = env!("CARGO_PKG_VERSION");
 
 
-fn repl_prompt(ns: &mut NameSpace) {
+fn repl_prompt(ns: &mut evaluator::NameSpace) {
     println!("{} {} {} {}", GREEN!("Welcome to Krusty"), GREEN!(VERSION_STR), "\u{1F980}", GREEN!("repl. Ctrl+C to exit!"));
     let cwd = env::current_dir().unwrap_or(PathBuf::from("."));
     ns.set_path(&cwd);
@@ -65,7 +53,7 @@ fn repl_prompt(ns: &mut NameSpace) {
 }
 
 
-fn run_file(filepath: &PathBuf, ns: &mut NameSpace) -> parser::Obj {
+fn run_file(filepath: &PathBuf, ns: &mut evaluator::NameSpace) -> parser::Obj {
     ns.set_path(&filepath);
     print_verbose!("Running {:?}", ns.get_path());
 
@@ -81,12 +69,12 @@ fn main() {
     if argv.len() > 1 {
         let filepath = PathBuf::from_slash(&argv[1]);
         if filepath.is_file() {
-            let mut ns = NameSpace::new(None);
+            let mut ns = evaluator::NameSpace::new(None);
             let _vo = run_file(&filepath, &mut ns);
             print_verbose!("FINAL\n{:?}\n{:?}", _vo, ns);
         }
     } else {
-        let mut ns = NameSpace::new(None);
+        let mut ns = evaluator::NameSpace::new(None);
         repl_prompt(&mut ns);
     }
 }

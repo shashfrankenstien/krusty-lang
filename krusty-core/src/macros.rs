@@ -1,3 +1,4 @@
+#[macro_export]
 macro_rules! print_verbose {
     ($plain_string:expr) => {
         if env::var("VERBOSE").is_ok() {

@@ -103,10 +103,18 @@ version = "0.1.1"
 dependencies = [
  "console",
  "ctrlc",
+ "krusty-core",
+ "path-slash",
+ "rustyline",
+]
+
+[[package]]
+name = "krusty-core"
+version = "0.1.1"
+dependencies = [
  "lazy_static",
  "path-slash",
  "regex",
- "rustyline",
 ]
 
 [[package]]
