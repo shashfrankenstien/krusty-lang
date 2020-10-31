@@ -101,11 +101,9 @@ dependencies = [
 name = "krust"
 version = "0.1.1"
 dependencies = [
- "console",
- "ctrlc",
  "krusty-core",
+ "krusty-repl",
  "path-slash",
- "rustyline",
 ]
 
 [[package]]
@@ -115,6 +113,15 @@ dependencies = [
  "lazy_static",
  "path-slash",
  "regex",
+]
+
+[[package]]
+name = "krusty-repl"
+version = "0.1.1"
+dependencies = [
+ "console",
+ "ctrlc",
+ "rustyline",
 ]
 
 [[package]]

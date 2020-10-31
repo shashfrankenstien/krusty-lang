@@ -1,4 +1,3 @@
-use std::env;
 use std::ops::Drop;
 
 use rustyline::{self, error::ReadlineError, config::Configurer};
@@ -65,7 +64,7 @@ impl Prompt {
         while buffer.trim()!="" {
             buffer.push('\n'); // rustyline removes newline character. Adding one back here
             if self.is_complete(&buffer[tot_chars..]) {break;}
-            print_verbose!("want_pair: {:?}", self.want_pair);
+            // print_verbose!("want_pair: {:?}", self.want_pair);
 
             #[cfg(windows)]
             let more = self.cli.readline(".. ")?; // color prompt on windows has length mesurement issues

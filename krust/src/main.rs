@@ -3,14 +3,9 @@ use path_slash::PathBufExt; // for PatjBuf::from_slash() trait
 use std::env; // required for print_verbose! macro
 use std::panic;
 
-#[macro_use]
-mod repl {
-    #[macro_use]
-    pub mod colors;
-    pub mod prompt;
-}
 
-use repl::prompt;
+#[macro_use] extern crate krusty_repl;
+use krusty_repl::prompt;
 
 #[macro_use] extern crate krusty_core;
 use krusty_core::syntax::lexer;
