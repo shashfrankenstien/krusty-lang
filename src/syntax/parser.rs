@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::env; // required for print_verbose! macro
 use std::cmp::Ordering;
 use std::path::PathBuf;
+use std::fmt;
 
 use crate::syntax::lexer;
 
@@ -49,6 +50,32 @@ pub enum Obj {
     Mod(Module),
     ModBody(Vec<Expression>), // same definition as FuncBody, but evaluated differently
 }
+
+
+
+impl fmt::Display for Obj {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Obj::Object(o) => write!(f, "{}", o),
+            Obj::Operator(op) => write!(f, "{}", op),
+            Obj::Bool(b) => write!(f, "{}", b),
+            Obj::Null => write!(f, "null"),
+            Obj::List(l) => {
+                write!(f, "(").unwrap();
+                if l.len() > 0 {
+                    for i in 0..(l.len()-1) {
+                        write!(f, "{},", l[i]).unwrap();
+                    };
+                    write!(f, "{}", l[l.len()-1]).unwrap();
+                }
+                write!(f, ")")
+            },
+            Obj::Mod(m) => write!(f, "<module at {:p}>", m),
+            _ => write!(f, "{:?}", self),
+        }
+    }
+}
+
 
 impl Obj {
     fn categorize(tok: &lexer::Token) -> Obj {

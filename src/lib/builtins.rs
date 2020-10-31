@@ -3,46 +3,12 @@ use path_slash::PathBufExt; // for PatjBuf::from_slash() trait
 use std::env; // required for print_verbose! macro
 use std::collections::HashMap;
 
-use std::fmt;
 
 use crate::syntax::{lexer, lexer::Token};
 use crate::syntax::{parser, parser::Obj};
 use crate::syntax::evaluator::NameSpace;
 
 // ================ print =======================
-impl fmt::Display for Token {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Token::Number(n) => write!(f, "{}", n),
-            Token::Text(t) => write!(f, "\"{}\"", t),
-            _ => write!(f, "{:?}", self),
-        }
-    }
-}
-
-
-impl fmt::Display for Obj {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Obj::Object(o) => write!(f, "{}", o),
-            Obj::Operator(op) => write!(f, "{}", op),
-            Obj::Bool(b) => write!(f, "{}", b),
-            Obj::Null => write!(f, "null"),
-            Obj::List(l) => {
-                write!(f, "(").unwrap();
-                if l.len() > 0 {
-                    for i in 0..(l.len()-1) {
-                        write!(f, "{},", l[i]).unwrap();
-                    };
-                    write!(f, "{}", l[l.len()-1]).unwrap();
-                }
-                write!(f, ")")
-            },
-            Obj::Mod(m) => write!(f, "<module at {:p}>", m),
-            _ => write!(f, "{:?}", self),
-        }
-    }
-}
 
 
 pub fn _print(_: &mut NameSpace, args: &Vec<Obj>) -> Obj {

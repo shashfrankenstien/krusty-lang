@@ -5,28 +5,7 @@ use lazy_static::lazy_static;
 use std::io::Read; // for read_to_string
 use std::fs;
 use std::path::PathBuf;
-
-
-#[derive(Debug, Clone, PartialEq, PartialOrd)]
-pub enum Token {
-    Number(f64),
-    Text(String),
-    Symbol(String),
-    Arith(char),
-    Comparison(String),
-    ScopeStart(char),
-    ScopeEnd(char),
-    Separator,
-    FuncDef,
-    FuncCall,
-    FuncReturn,
-    List,
-    Index,
-    Assign,
-    Accessor,
-    _Comment,
-    _NewLine,
-}
+use std::fmt;
 
 
 lazy_static! {
@@ -52,6 +31,40 @@ lazy_static! {
     ]).unwrap();
 }
 
+
+
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
+pub enum Token {
+    Number(f64),
+    Text(String),
+    Symbol(String),
+    Arith(char),
+    Comparison(String),
+    ScopeStart(char),
+    ScopeEnd(char),
+    Separator,
+    FuncDef,
+    FuncCall,
+    FuncReturn,
+    List,
+    Index,
+    Assign,
+    Accessor,
+    _Comment,
+    _NewLine,
+}
+
+
+
+impl fmt::Display for Token {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Token::Number(n) => write!(f, "{}", n),
+            Token::Text(t) => write!(f, "\"{}\"", t),
+            _ => write!(f, "{:?}", self),
+        }
+    }
+}
 
 
 
