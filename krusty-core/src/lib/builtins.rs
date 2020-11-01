@@ -4,12 +4,13 @@ use std::collections::HashMap;
 
 #[cfg(debug_assertions)]
 use std::env; // required for print_verbose! macro
+use libloading;
 
 use crate::syntax::{lexer, lexer::Token};
 use crate::syntax::{parser, parser::Obj};
 use crate::syntax::evaluator::NameSpace;
 
-use crate::lib::funcdef::NativeFuncDef;
+use crate::lib::loader;
 
 // ================ print =======================
 
@@ -108,6 +109,57 @@ pub fn _import(ns: &mut NameSpace, args: &Vec<Obj>) -> Obj {
 }
 
 
+fn call_dynamic_loader(path: &str, hm: &mut HashMap<String, Obj>) -> Result<u32, Box<dyn std::error::Error>> {
+    let lib = libloading::Library::new(path)?;
+    unsafe {
+        let func: libloading::Symbol<unsafe extern fn(&mut HashMap<String, Obj>)> = lib.get(b"load")?;
+        func(hm);
+        Ok(1)
+    }
+}
+
+pub fn _import_native(ns: &mut NameSpace, args: &Vec<Obj>) -> Obj {
+    if args.len() != 1 {
+        panic!("can only import one at a time for now")
+    }
+    match &args[0] {
+        Obj::Object(Token::Text(p)) => {
+            let cur_path = ns.get_path();
+            let p = match cur_path {
+                Some(pbuf) => {
+                    let mut newbuf = pbuf.clone();
+                    if newbuf.is_dir() {
+                        newbuf.push(PathBuf::from_slash(p)); // push new filename
+                    } else {
+                        newbuf.set_file_name(PathBuf::from_slash(p)); // replace filename
+                    }
+                    if !newbuf.ends_with("so") {
+                        newbuf.set_extension("so");
+                    }
+                    newbuf
+                },
+                None => PathBuf::from_slash(p)
+            };
+            print_verbose!("import_native({:?})", p);
+            // let mut tokens = lexer::lex_file(&p);
+            // let tree = parser::parse(&mut tokens);
+
+            let mut new_ns = NameSpace::new(Some(&p), Some(ns));
+            match call_dynamic_loader(p.to_str().unwrap(), &mut new_ns.module.vars) {
+                Ok(_) => (),
+                Err(e) => {
+                    println!("{:?}", e);
+                    panic!("error loading module")
+                }
+            }
+            // new_ns.run(&tree);
+            new_ns.to_object()
+        },
+        _ => Obj::Null
+    }
+}
+
+
 // ================ iter ================
 
 pub fn _len(_: &mut NameSpace, args: &Vec<Obj>) -> Obj {
@@ -176,12 +228,14 @@ pub fn load(env_native: &mut HashMap<String, Obj>) {
     env_native.insert("true".to_string(), Obj::Bool(true));
     env_native.insert("false".to_string(), Obj::Bool(false));
 
-    env_native.insert("print".to_string(), Obj::NativeFunc(NativeFuncDef::new(_print, "print")));
-    env_native.insert("type".to_string(), Obj::NativeFunc(NativeFuncDef::new(_type, "type")));
-    env_native.insert("if".to_string(), Obj::NativeFunc(NativeFuncDef::new(_if, "if")));
-    env_native.insert("import".to_string(), Obj::NativeFunc(NativeFuncDef::new(_import, "import")));
-    env_native.insert("len".to_string(), Obj::NativeFunc(NativeFuncDef::new(_len, "len")));
-    env_native.insert("foreach".to_string(), Obj::NativeFunc(NativeFuncDef::new(_foreach, "foreach")));
+    loader::load_func(env_native, "print", _print);
+    loader::load_func(env_native, "type", _type);
+    loader::load_func(env_native, "if", _if);
+    loader::load_func(env_native, "len", _len);
+    loader::load_func(env_native, "foreach", _foreach);
+    loader::load_func(env_native, "vars", _vars);
 
-    env_native.insert("vars".to_string(), Obj::NativeFunc(NativeFuncDef::new(_vars, "vars")));
+    loader::load_func(env_native, "import", _import);
+    loader::load_func(env_native, "import_native", _import_native);
+
 }

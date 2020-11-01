@@ -4,4 +4,5 @@ members = [
     "krusty-core",
     "krusty-repl",
     "krust",
+    "os"
 ]

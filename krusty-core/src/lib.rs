@@ -10,6 +10,7 @@ pub mod syntax {
 pub mod lib {
     pub mod funcdef;
     pub mod builtins;
+    pub mod loader;
 }
 
 
