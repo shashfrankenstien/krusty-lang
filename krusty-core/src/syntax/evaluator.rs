@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Component, PathBuf};
 use path_slash::PathBufExt; // for PatjBuf::from_slash() trait
 
 #[cfg(debug_assertions)]
@@ -100,7 +100,16 @@ impl<'a> NameSpace<'a> {
                 } else {
                     newbuf.set_file_name(PathBuf::from_slash(p)); // replace filename
                 }
-                newbuf
+                 // this step ensures `..` is translated
+                 // without this `..` fails on windows
+                let mut out = PathBuf::new();
+                for c in newbuf.components() {
+                    match c {
+                        Component::ParentDir => {out.pop();},
+                        _ => out.push(c)
+                    }
+                }
+                out
             },
             None => PathBuf::from_slash(p)
         }

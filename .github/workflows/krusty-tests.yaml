@@ -19,6 +19,7 @@ jobs:
       - name: Run on windows
         if: matrix.os == 'windows-latest'
         run: for /r %v in (*.krt) do cargo run "%v"
+        shell: cmd
 
       - name: Not on windows
         if: matrix.os != 'windows-latest'
