@@ -9,6 +9,8 @@ use crate::syntax::{lexer, lexer::Token};
 use crate::syntax::{parser, parser::Obj};
 use crate::syntax::evaluator::NameSpace;
 
+use crate::lib::funcdef::NativeFuncDef;
+
 // ================ print =======================
 
 
@@ -41,7 +43,7 @@ pub fn _type(_: &mut NameSpace, args: &Vec<Obj>) -> Obj {
         Obj::Object(Token::Text(_)) => Obj::Object(Token::Text("<Text>".to_string())),
         Obj::Object(Token::Number(_)) => Obj::Object(Token::Text("<Number>".to_string())),
         Obj::Func(_) => Obj::Object(Token::Text("<Func>".to_string())),
-        Obj::BuiltinFunc(_) => Obj::Object(Token::Text("<BuiltinFunc>".to_string())),
+        Obj::NativeFunc(_) => Obj::Object(Token::Text("<NativeFunc>".to_string())),
         Obj::List(_) => Obj::Object(Token::Text("<List>".to_string())),
         Obj::Bool(_) => Obj::Object(Token::Text("<Bool>".to_string())),
         Obj::Expr(_) => Obj::Object(Token::Text("<Expr>".to_string())),
@@ -125,7 +127,7 @@ pub fn _foreach(ns: &mut NameSpace, args: &Vec<Obj>) -> Obj {
     if args.len() != 2 {
         panic!("illegal number of arguments. Expected 2")
     }
-    if let Obj::Func(_) | Obj::BuiltinFunc(_) = &args[1] {
+    if let Obj::Func(_) | Obj::NativeFunc(_) = &args[1] {
         let res: Vec<Obj>;
         return match &args[0] {
             Obj::List(l) => {
@@ -173,30 +175,17 @@ pub fn _vars(ns: &mut NameSpace, args: &Vec<Obj>) -> Obj {
 // ================ namespace helper functions ====================
 
 
-pub fn load(env_bi: &mut HashMap<String, Obj>) {
-    env_bi.insert("null".to_string(), Obj::Null);
-    env_bi.insert("true".to_string(), Obj::Bool(true));
-    env_bi.insert("false".to_string(), Obj::Bool(false));
+pub fn load(env_native: &mut HashMap<String, Obj>) {
+    env_native.insert("null".to_string(), Obj::Null);
+    env_native.insert("true".to_string(), Obj::Bool(true));
+    env_native.insert("false".to_string(), Obj::Bool(false));
 
-    env_bi.insert("print".to_string(), Obj::BuiltinFunc("print".to_string()));
-    env_bi.insert("type".to_string(), Obj::BuiltinFunc("type".to_string()));
-    env_bi.insert("if".to_string(), Obj::BuiltinFunc("if".to_string()));
-    env_bi.insert("import".to_string(), Obj::BuiltinFunc("import".to_string()));
-    env_bi.insert("len".to_string(), Obj::BuiltinFunc("len".to_string()));
-    env_bi.insert("foreach".to_string(), Obj::BuiltinFunc("foreach".to_string()));
+    env_native.insert("print".to_string(), Obj::NativeFunc(NativeFuncDef::new(_print, "print")));
+    env_native.insert("type".to_string(), Obj::NativeFunc(NativeFuncDef::new(_type, "type")));
+    env_native.insert("if".to_string(), Obj::NativeFunc(NativeFuncDef::new(_if, "if")));
+    env_native.insert("import".to_string(), Obj::NativeFunc(NativeFuncDef::new(_import, "import")));
+    env_native.insert("len".to_string(), Obj::NativeFunc(NativeFuncDef::new(_len, "len")));
+    env_native.insert("foreach".to_string(), Obj::NativeFunc(NativeFuncDef::new(_foreach, "foreach")));
 
-    env_bi.insert("vars".to_string(), Obj::BuiltinFunc("vars".to_string()));
-}
-
-pub fn find_func(name: &str) -> fn(&mut NameSpace, &Vec<Obj>) -> Obj {
-    match name {
-        "print" => _print,
-        "type" => _type,
-        "if" => _if,
-        "import" => _import,
-        "len" => _len,
-        "foreach" => _foreach,
-        "vars" => _vars,
-        _ => panic!("'{}' not found", name)
-    }
+    env_native.insert("vars".to_string(), Obj::NativeFunc(NativeFuncDef::new(_vars, "vars")));
 }

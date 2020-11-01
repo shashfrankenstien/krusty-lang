@@ -5,9 +5,9 @@ use std::fs;
 #[cfg(debug_assertions)]
 use std::env; // required for print_verbose! macro
 
-use crate::syntax::parser::{Obj, Expression, Module};
+use crate::syntax::parser::{Obj, Expression};
 use crate::syntax::lexer::Token;
-use crate::lib::builtins;
+use crate::lib::{funcdef, builtins};
 
 
 
@@ -15,7 +15,7 @@ use crate::lib::builtins;
 pub struct NameSpace<'a> {
     builtin_funcs: Option<HashMap<String, Obj>>,
     parent: Option<&'a NameSpace<'a>>,
-    pub module: Module,
+    pub module: funcdef::Module,
 }
 
 
@@ -28,7 +28,7 @@ impl<'a> NameSpace<'a> {
             builtin_funcs = Some(b);
         }
         NameSpace {
-            module: Module::new(None),
+            module: funcdef::Module::new(None),
             builtin_funcs,
             parent,
         }
@@ -194,10 +194,9 @@ impl<'a> NameSpace<'a> {
                     }
                 }
             },
-            Obj::BuiltinFunc(f) => {
-                let f = builtins::find_func(&f[..]);
+            Obj::NativeFunc(f) => {
                 let clean_args: Vec<Obj> = args.iter().map(|x| self.resolve(x)).collect();
-                f(self, &clean_args)
+                (f.func)(self, &clean_args)
             }
             _ => panic!("function '{}' definition error", name)
         }
@@ -308,7 +307,7 @@ impl<'a> NameSpace<'a> {
                                         let mut ns = NameSpace { // create new execution namespace
                                             builtin_funcs: None,
                                             module: m,
-                                            parent: Some(self)
+                                            parent: Some(&self)
                                         };
                                         ns.solve_expr(x)
                                     }

@@ -8,6 +8,7 @@ pub mod syntax {
 }
 
 pub mod lib {
+    pub mod funcdef;
     pub mod builtins;
 }
 

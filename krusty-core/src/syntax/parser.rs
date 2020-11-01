@@ -1,40 +1,12 @@
-use std::collections::HashMap;
-use std::cmp::Ordering;
-use std::path::PathBuf;
+
 use std::fmt;
 
 #[cfg(debug_assertions)]
 use std::env; // required for print_verbose! macro
 
 use crate::syntax::lexer;
+use crate::lib::funcdef;
 
-
-#[derive(Debug, Clone, PartialEq, PartialOrd)]
-pub struct FuncDef {
-    pub args: Obj,
-    pub body: Obj
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct Module {
-    pub vars: HashMap<String, Obj>,
-    pub path: Option<PathBuf>
-}
-
-impl PartialOrd for Module {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.vars.len().partial_cmp(&other.vars.len())
-    }
-}
-
-impl Module {
-    pub fn new(path: Option<PathBuf>) -> Module {
-        Module {
-            vars: HashMap::new(),
-            path
-        }
-    }
-}
 
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
@@ -46,10 +18,10 @@ pub enum Obj {
     Scope(char),
     Expr(Box<Expression>), // use Box since Expression has Obj type members (recursive)
     List(Vec<Obj>),
-    Func(Box<FuncDef>),
+    Func(Box<funcdef::FuncDef>),
     FuncBody(Vec<Expression>),
-    BuiltinFunc(String),
-    Mod(Module),
+    NativeFunc(funcdef::NativeFuncDef),
+    Mod(funcdef::Module),
     ModBody(Vec<Expression>), // same definition as FuncBody, but evaluated differently
 }
 
@@ -158,7 +130,7 @@ impl Expression {
                     Obj::FuncBody(_) | Obj::Expr(_) => (),
                     _ => panic!("Invalid function body")
                 }
-                Obj::Func(Box::new(FuncDef {args, body}))
+                Obj::Func(Box::new(funcdef::FuncDef {args, body}))
             } else {
                 panic!("Illegal function definition - {:?}", self)
             }
