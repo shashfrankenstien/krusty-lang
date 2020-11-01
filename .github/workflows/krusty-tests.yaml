@@ -14,5 +14,12 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
+
       # - run: cargo build --release --all-features
-      - run: cargo run test_code/*.krt
+      - name: Run on windows
+        if: matrix.os == 'windows-latest'
+        run: for /r %v in (*.krt) do cargo run "%v"
+
+      - name: Not on windows
+        if: matrix.os != 'windows-latest'
+        run: cargo run test_code/*.krt

@@ -1,4 +1,4 @@
-os = import_native("../target/debug/libos");
+os = import_native("../target/debug/os");
 
 mod_print = (s) => {
     print("   ", s);

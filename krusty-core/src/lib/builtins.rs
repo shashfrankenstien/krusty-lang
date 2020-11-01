@@ -103,19 +103,7 @@ pub fn _import_native(ns: &mut NameSpace, args: &Vec<Phrase>) -> Phrase {
         Phrase::Object(Token::Text(p)) => {
             let mut p = ns.get_relative_path(&p);
             // let fname = libloading::library_filename(p.file_name().unwrap());
-            #[cfg(target_os = "windows")]
-            if !p.ends_with("dll") {
-                p.set_extension("dll");
-            }
-            #[cfg(target_os = "macos")]
-            if !p.ends_with("dylib") {
-                p.set_extension("dylib");
-            }
-
-            #[cfg(not(any(target_os = "windows", target_os = "macos")))]
-            if !p.ends_with("so") {
-                p.set_extension("so");
-            }
+            loader::convert_dylib_os_name(&mut p);
 
             print_verbose!("import_native({:?})", p);
 
