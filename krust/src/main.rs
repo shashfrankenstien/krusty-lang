@@ -63,9 +63,11 @@ fn main() {
     let argv: Vec<String> = env::args().collect();
     // println!("{:?}", argv.len());
     if argv.len() > 1 {
-        let filepath = PathBuf::from_slash(&argv[1]);
-        if filepath.is_file() {
-            run_file(&filepath);
+        for f in &argv[1..] {
+            let filepath = PathBuf::from_slash(f);
+            if filepath.is_file() {
+                run_file(&filepath);
+            }
         }
     } else {
         repl_prompt();
