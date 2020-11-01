@@ -1,8 +1,9 @@
 use std::path::PathBuf;
 use path_slash::PathBufExt; // for PatjBuf::from_slash() trait
-use std::env; // required for print_verbose! macro
 use std::collections::HashMap;
 
+#[cfg(debug_assertions)]
+use std::env; // required for print_verbose! macro
 
 use crate::syntax::{lexer, lexer::Token};
 use crate::syntax::{parser, parser::Obj};

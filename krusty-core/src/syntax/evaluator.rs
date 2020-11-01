@@ -1,7 +1,9 @@
 use std::collections::HashMap;
-use std::env;
 use std::path::PathBuf;
 use std::fs;
+
+#[cfg(debug_assertions)]
+use std::env; // required for print_verbose! macro
 
 use crate::syntax::parser::{Obj, Expression, Module};
 use crate::syntax::lexer::Token;

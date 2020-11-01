@@ -1,4 +1,6 @@
+#[cfg(debug_assertions)]
 use std::env; // required for print_verbose! macro
+
 use regex::RegexSet;
 use lazy_static::lazy_static;
 

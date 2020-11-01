@@ -1,8 +1,10 @@
 use std::collections::HashMap;
-use std::env; // required for print_verbose! macro
 use std::cmp::Ordering;
 use std::path::PathBuf;
 use std::fmt;
+
+#[cfg(debug_assertions)]
+use std::env; // required for print_verbose! macro
 
 use crate::syntax::lexer;
 
@@ -435,12 +437,8 @@ pub fn parse(tokens: &mut lexer::Scanner) -> Vec<Expression> {
 
     let output: Vec<Expression> = Expression::parse_scope(tokens, None);
 
-    if env::var("VERBOSE").is_ok() {
-        println!("\n--------parsing done!--------");
-        for (i,o) in output.iter().enumerate() {
-            println!("{} {:?}", i, o)
-        }
-        println!("------------------\n");
-    }
+    print_verbose!("\n--------parsing done!--------");
+    print_verbose_iter!(output);
+    print_verbose!("------------------\n");
     output
 }
