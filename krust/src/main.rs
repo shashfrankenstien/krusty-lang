@@ -15,10 +15,10 @@ use krusty_core::syntax::evaluator;
 const VERSION_STR: &'static str = env!("CARGO_PKG_VERSION");
 
 
-fn repl_prompt(ns: &mut evaluator::NameSpace) {
+fn repl_prompt() {
     println!("{} {} {} {}", GREEN!("Welcome to Krusty"), GREEN!(VERSION_STR), "\u{1F980}", GREEN!("repl. Ctrl+C to exit!"));
     let cwd = env::current_dir().unwrap_or(PathBuf::from("."));
-    ns.set_path(&cwd);
+    let mut ns = evaluator::NameSpace::new(Some(&cwd), None);
 
     let mut cli = prompt::Prompt::new();
     loop {
@@ -48,13 +48,14 @@ fn repl_prompt(ns: &mut evaluator::NameSpace) {
 }
 
 
-fn run_file(filepath: &PathBuf, ns: &mut evaluator::NameSpace) -> parser::Obj {
-    ns.set_path(&filepath);
+fn run_file(filepath: &PathBuf) {
+    let mut ns = evaluator::NameSpace::new(Some(&filepath), None);
     print_verbose!("Running {:?}", ns.get_path());
 
     let mut tokens = lexer::lex_file(filepath);
     let tree = parser::parse(&mut tokens);
-    ns.run(&tree)
+    let _vo = ns.run(&tree);
+    print_verbose!("FINAL\n{:?}\n{:?}", _vo, ns);
 }
 
 
@@ -64,12 +65,9 @@ fn main() {
     if argv.len() > 1 {
         let filepath = PathBuf::from_slash(&argv[1]);
         if filepath.is_file() {
-            let mut ns = evaluator::NameSpace::new(None);
-            let _vo = run_file(&filepath, &mut ns);
-            print_verbose!("FINAL\n{:?}\n{:?}", _vo, ns);
+            run_file(&filepath);
         }
     } else {
-        let mut ns = evaluator::NameSpace::new(None);
-        repl_prompt(&mut ns);
+        repl_prompt();
     }
 }

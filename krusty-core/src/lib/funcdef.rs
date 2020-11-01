@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::cmp::Ordering;
 use std::path::PathBuf;
+use std::fs;
 
 use crate::syntax::evaluator::NameSpace;
 use crate::syntax::parser::Obj;
@@ -67,7 +68,14 @@ impl PartialOrd for Module {
 }
 
 impl Module {
-    pub fn new(path: Option<PathBuf>) -> Module {
+    pub fn new(path: Option<&PathBuf>) -> Module {
+        let path = match path {
+            None => None,
+            Some(p) => {
+                let srcdir = fs::canonicalize(p).expect("No such File!");
+                Some(srcdir)
+            }
+        };
         Module {
             vars: HashMap::new(),
             path

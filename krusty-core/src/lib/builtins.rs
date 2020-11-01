@@ -99,8 +99,7 @@ pub fn _import(ns: &mut NameSpace, args: &Vec<Obj>) -> Obj {
             let mut tokens = lexer::lex_file(&p);
             let tree = parser::parse(&mut tokens);
 
-            let mut new_ns = NameSpace::new(Some(ns));
-            new_ns.set_path(&p);
+            let mut new_ns = NameSpace::new(Some(&p), Some(ns));
             new_ns.run(&tree);
             new_ns.to_object()
         },
@@ -136,9 +135,6 @@ pub fn _foreach(ns: &mut NameSpace, args: &Vec<Obj>) -> Obj {
             },
             Obj::Object(Token::Text(t)) => {
                 res = t.chars().map(|c| ns.eval_func_obj(&args[1], &Obj::Object(Token::Text(c.to_string())), None)).collect();
-                // for c in t.chars() {
-                //     ns.eval_func_obj(&args[1], &Obj::Object(Token::Text(c.to_string())), None);
-                // }
                 Obj::List(res)
             },
             _ => panic!("iteration not supported")

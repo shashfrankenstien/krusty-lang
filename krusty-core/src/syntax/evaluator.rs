@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::fs;
 
 #[cfg(debug_assertions)]
 use std::env; // required for print_verbose! macro
@@ -20,7 +19,7 @@ pub struct NameSpace<'a> {
 
 
 impl<'a> NameSpace<'a> {
-    pub fn new(parent: Option<&'a NameSpace<'a>>) -> NameSpace<'a> {
+    pub fn new(path: Option<&PathBuf>, parent: Option<&'a NameSpace<'a>>) -> NameSpace<'a> {
         let mut builtin_funcs: Option<HashMap<String, Obj>> = None;
         if let None = parent {
             let mut b = HashMap::new();
@@ -28,7 +27,7 @@ impl<'a> NameSpace<'a> {
             builtin_funcs = Some(b);
         }
         NameSpace {
-            module: funcdef::Module::new(None),
+            module: funcdef::Module::new(path),
             builtin_funcs,
             parent,
         }
@@ -90,11 +89,6 @@ impl<'a> NameSpace<'a> {
         }
     }
 
-    pub fn set_path(&mut self, filepath: &PathBuf) {
-        let srcdir = fs::canonicalize(&filepath).expect("No such File!");
-        self.module.path = Some(srcdir)
-    }
-
     pub fn resolve(&mut self, o: &Obj) -> Obj {
         match o {
             Obj::Expr(ex) => self.solve_expr(ex),
@@ -102,7 +96,7 @@ impl<'a> NameSpace<'a> {
             Obj::List(l) => Obj::List(l.into_iter().map(|x| self.resolve(x)).collect()),
             Obj::ModBody(m) => {
                 // resolve ModBody to Mod
-                let mut ns = NameSpace::new(Some(self));
+                let mut ns = NameSpace::new(None, Some(self));
                 ns.run(&m);
                 ns.to_object()
             },
@@ -183,7 +177,7 @@ impl<'a> NameSpace<'a> {
                 if req_args.len() != args.len() {
                     panic!("function arguments for '{}' don't match", name);
                 } else {
-                    let mut exec_env = NameSpace::new(Some(self));
+                    let mut exec_env = NameSpace::new(None, Some(self));
                     for (k,v) in req_args.iter().zip(args.iter()) {
                         exec_env.assign(&k, &v);
                     }
