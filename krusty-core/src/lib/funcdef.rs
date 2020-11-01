@@ -2,9 +2,11 @@ use std::collections::HashMap;
 use std::cmp::Ordering;
 use std::path::PathBuf;
 use std::fs;
+use libloading;
 
 use crate::syntax::evaluator::NameSpace;
 use crate::syntax::parser::Obj;
+use crate::lib::loader;
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct FuncDef {
@@ -54,12 +56,38 @@ impl PartialOrd for NativeFuncDef {
 
 
 
-
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug)]
 pub struct Module {
     pub vars: HashMap<String, Obj>,
-    pub path: Option<PathBuf>
+    pub path: Option<PathBuf>,
+    dylib: Option<libloading::Library>
 }
+
+impl Clone for Module {
+    fn clone(&self) -> Module {
+        match self.dylib {
+            None => Module{
+                vars: self.vars.clone(),
+                path: self.path.clone(),
+                dylib: None
+            },
+            Some(_) => {
+                Module {
+                    vars: self.vars.clone(),
+                    path: self.path.clone(),
+                    dylib: Some(libloading::Library::new(self.path.clone().unwrap()).expect("library load error"))
+                }
+            },
+        }
+    }
+}
+
+impl PartialEq for Module {
+    fn eq(&self, other: &Self) -> bool {
+        self.path == other.path
+    }
+}
+impl Eq for Module {}
 
 impl PartialOrd for Module {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
@@ -72,13 +100,24 @@ impl Module {
         let path = match path {
             None => None,
             Some(p) => {
-                let srcdir = fs::canonicalize(p).expect("No such File!");
-                Some(srcdir)
+                let srcfile = fs::canonicalize(p).expect("No such File!");
+                Some(srcfile)
             }
         };
         Module {
             vars: HashMap::new(),
-            path
+            path,
+            dylib: None
         }
+    }
+
+    pub fn load_dylib(&mut self) {
+        let path = self.path.clone().unwrap();
+        let lib = libloading::Library::new(path).expect("library load error");
+        unsafe {
+            let func: libloading::Symbol<loader::DynLoadSignature> = lib.get(b"load").expect("library load error2");
+            func(&mut self.vars);
+        }
+        self.dylib = Some(lib);
     }
 }

@@ -3,7 +3,6 @@ use std::ffi::OsStr;
 use path_slash::PathBufExt; // for PatjBuf::from_slash() trait
 use std::fs;
 use std::env;
-use std::collections::HashMap;
 
 use krusty_core::syntax::lexer::Token;
 use krusty_core::syntax::parser::Obj;
@@ -24,8 +23,7 @@ fn _read_dir_to_list(dirpath: &PathBuf) -> Result<Vec<Obj>, std::io::Error> {
     Ok(v)
 }
 
-pub fn _listdir(_: &mut NameSpace, args: &Vec<Obj>) -> Obj {
-    println!("{:?}", args);
+pub fn _listdir(_ns: &mut NameSpace, args: &Vec<Obj>) -> Obj {
     if args.len() > 1 {
         panic!("takes 0 or 1 arguments, {} supplied", args.len())
     }
@@ -54,8 +52,8 @@ pub fn _listdir(_: &mut NameSpace, args: &Vec<Obj>) -> Obj {
 }
 
 #[no_mangle]
-pub fn load(ns_vars: &mut HashMap<String, Obj>) {
-    loader::load_func(ns_vars, "listdir", _listdir);
+pub fn load(m_vars: &mut loader::ModuleVars) {
+    loader::load_func(m_vars, "listdir", _listdir);
 }
 
 

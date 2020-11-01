@@ -1,10 +1,7 @@
-use std::path::PathBuf;
-use path_slash::PathBufExt; // for PatjBuf::from_slash() trait
 use std::collections::HashMap;
 
 #[cfg(debug_assertions)]
 use std::env; // required for print_verbose! macro
-use libloading;
 
 use crate::syntax::{lexer, lexer::Token};
 use crate::syntax::{parser, parser::Obj};
@@ -80,22 +77,10 @@ pub fn _import(ns: &mut NameSpace, args: &Vec<Obj>) -> Obj {
     }
     match &args[0] {
         Obj::Object(Token::Text(p)) => {
-            let cur_path = ns.get_path();
-            let p = match cur_path {
-                Some(pbuf) => {
-                    let mut newbuf = pbuf.clone();
-                    if newbuf.is_dir() {
-                        newbuf.push(PathBuf::from_slash(p)); // push new filename
-                    } else {
-                        newbuf.set_file_name(PathBuf::from_slash(p)); // replace filename
-                    }
-                    if !newbuf.ends_with("kry") {
-                        newbuf.set_extension("kry");
-                    }
-                    newbuf
-                },
-                None => PathBuf::from_slash(p)
-            };
+            let mut p = ns.get_relative_path(p);
+            if !p.ends_with("kry") {
+                p.set_extension("kry");
+            }
             print_verbose!("import({:?})", p);
             let mut tokens = lexer::lex_file(&p);
             let tree = parser::parse(&mut tokens);
@@ -109,14 +94,6 @@ pub fn _import(ns: &mut NameSpace, args: &Vec<Obj>) -> Obj {
 }
 
 
-fn call_dynamic_loader(path: &str, hm: &mut HashMap<String, Obj>) -> Result<u32, Box<dyn std::error::Error>> {
-    let lib = libloading::Library::new(path)?;
-    unsafe {
-        let func: libloading::Symbol<unsafe extern fn(&mut HashMap<String, Obj>)> = lib.get(b"load")?;
-        func(hm);
-        Ok(1)
-    }
-}
 
 pub fn _import_native(ns: &mut NameSpace, args: &Vec<Obj>) -> Obj {
     if args.len() != 1 {
@@ -124,35 +101,14 @@ pub fn _import_native(ns: &mut NameSpace, args: &Vec<Obj>) -> Obj {
     }
     match &args[0] {
         Obj::Object(Token::Text(p)) => {
-            let cur_path = ns.get_path();
-            let p = match cur_path {
-                Some(pbuf) => {
-                    let mut newbuf = pbuf.clone();
-                    if newbuf.is_dir() {
-                        newbuf.push(PathBuf::from_slash(p)); // push new filename
-                    } else {
-                        newbuf.set_file_name(PathBuf::from_slash(p)); // replace filename
-                    }
-                    if !newbuf.ends_with("so") {
-                        newbuf.set_extension("so");
-                    }
-                    newbuf
-                },
-                None => PathBuf::from_slash(p)
-            };
+            let mut p = ns.get_relative_path(p);
+            if !p.ends_with("so") {
+                p.set_extension("so");
+            }
             print_verbose!("import_native({:?})", p);
-            // let mut tokens = lexer::lex_file(&p);
-            // let tree = parser::parse(&mut tokens);
 
             let mut new_ns = NameSpace::new(Some(&p), Some(ns));
-            match call_dynamic_loader(p.to_str().unwrap(), &mut new_ns.module.vars) {
-                Ok(_) => (),
-                Err(e) => {
-                    println!("{:?}", e);
-                    panic!("error loading module")
-                }
-            }
-            // new_ns.run(&tree);
+            new_ns.module.load_dylib();
             new_ns.to_object()
         },
         _ => Obj::Null

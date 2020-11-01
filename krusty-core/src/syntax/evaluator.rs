@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
+use path_slash::PathBufExt; // for PatjBuf::from_slash() trait
 
 #[cfg(debug_assertions)]
 use std::env; // required for print_verbose! macro
@@ -86,6 +87,22 @@ impl<'a> NameSpace<'a> {
             self.parent.unwrap().get_path() // get from parent
         } else {
             None
+        }
+    }
+
+    pub fn get_relative_path(&self, p: &String) -> PathBuf {
+        let cur_path = self.get_path();
+        match cur_path {
+            Some(pbuf) => {
+                let mut newbuf = pbuf.clone();
+                if newbuf.is_dir() {
+                    newbuf.push(PathBuf::from_slash(p)); // push new filename
+                } else {
+                    newbuf.set_file_name(PathBuf::from_slash(p)); // replace filename
+                }
+                newbuf
+            },
+            None => PathBuf::from_slash(p)
         }
     }
 

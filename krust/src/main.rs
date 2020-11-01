@@ -49,7 +49,7 @@ fn repl_prompt() {
 
 
 fn run_file(filepath: &PathBuf) {
-    let mut ns = evaluator::NameSpace::new(Some(&filepath), None);
+    let mut ns = evaluator::NameSpace::new(Some(filepath), None);
     print_verbose!("Running {:?}", ns.get_path());
 
     let mut tokens = lexer::lex_file(filepath);
