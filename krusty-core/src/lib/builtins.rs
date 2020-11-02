@@ -7,7 +7,7 @@ use crate::syntax::{lexer, lexer::Token};
 use crate::syntax::{parser, parser::Phrase};
 use crate::syntax::evaluator::NameSpace;
 
-use crate::lib::loader;
+use crate::lib::helper;
 
 // ================ print =======================
 
@@ -106,7 +106,7 @@ pub fn _import_native(ns: &mut NameSpace, args: &Vec<Phrase>) -> Phrase {
         Phrase::Object(Token::Text(p)) => {
             let mut p = ns.get_relative_path(&p);
             // let fname = libloading::library_filename(p.file_name().unwrap());
-            loader::convert_dylib_os_name(&mut p);
+            helper::convert_dylib_os_name(&mut p);
 
             print_verbose!("import_native({:?})", p);
 
@@ -187,14 +187,14 @@ pub fn load(env_native: &mut HashMap<String, Phrase>) {
     env_native.insert("true".to_string(), Phrase::Bool(true));
     env_native.insert("false".to_string(), Phrase::Bool(false));
 
-    loader::load_func(env_native, "print", _print);
-    loader::load_func(env_native, "type", _type);
-    loader::load_func(env_native, "if", _if);
-    loader::load_func(env_native, "len", _len);
-    loader::load_func(env_native, "foreach", _foreach);
-    loader::load_func(env_native, "vars", _vars);
+    helper::load_func(env_native, "print", _print);
+    helper::load_func(env_native, "type", _type);
+    helper::load_func(env_native, "if", _if);
+    helper::load_func(env_native, "len", _len);
+    helper::load_func(env_native, "foreach", _foreach);
+    helper::load_func(env_native, "vars", _vars);
 
-    loader::load_func(env_native, "import", _import);
-    loader::load_func(env_native, "import_native", _import_native);
+    helper::load_func(env_native, "import", _import);
+    helper::load_func(env_native, "import_native", _import_native);
 
 }

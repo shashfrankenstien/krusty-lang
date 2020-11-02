@@ -6,7 +6,7 @@ use libloading;
 
 use crate::syntax::evaluator::NameSpace;
 use crate::syntax::parser::Phrase;
-use crate::lib::loader;
+use crate::lib::helper;
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct FuncDef {
@@ -115,7 +115,7 @@ impl Module {
         let path = self.path.clone().unwrap();
         let lib = libloading::Library::new(path).expect("library load error");
         unsafe {
-            let func: libloading::Symbol<loader::DynLoadSignature> = lib.get(b"load").expect("library load error2");
+            let func: libloading::Symbol<helper::DynLoadSignature> = lib.get(b"load").expect("library load error2");
             func(&mut self.vars);
         }
         self.dylib = Some(lib);

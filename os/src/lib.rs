@@ -8,7 +8,7 @@ use krusty_core::syntax::lexer::Token;
 use krusty_core::syntax::parser::Phrase;
 use krusty_core::syntax::evaluator::NameSpace;
 
-use krusty_core::lib::loader;
+use krusty_core::lib::helper;
 
 
 fn _read_dir_to_list(dirpath: &PathBuf) -> Result<Vec<Phrase>, std::io::Error> {
@@ -52,8 +52,8 @@ pub fn _listdir(_ns: &mut NameSpace, args: &Vec<Phrase>) -> Phrase {
 }
 
 #[no_mangle]
-pub fn load(m_vars: &mut loader::ModuleVars) {
-    loader::load_func(m_vars, "listdir", _listdir);
+pub fn load(m_vars: &mut helper::ModuleVars) {
+    helper::load_func(m_vars, "listdir", _listdir);
 }
 
 
