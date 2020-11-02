@@ -7,15 +7,10 @@
 *
 */
 
-use std::collections::HashMap;
 use std::path::PathBuf;
 
-use crate::lib::funcdef;
+use crate::lib::{funcdef, moddef};
 use crate::syntax::parser::Phrase;
-
-
-pub type ModuleVars = HashMap<String, Phrase>;
-pub type DynLoadSignature = fn(&mut ModuleVars);
 
 
 #[macro_export]
@@ -38,7 +33,7 @@ macro_rules! func_nargs_le {
     };
 }
 
-pub fn load_func(hm: &mut ModuleVars, name: &str, f: funcdef::NativeFuncType) {
+pub fn load_func(hm: &mut moddef::ModuleVars, name: &str, f: funcdef::NativeFuncType) {
     hm.insert(name.to_string(), Phrase::NativeFunc(
         funcdef::NativeFuncDef::new(f, name)
     ));

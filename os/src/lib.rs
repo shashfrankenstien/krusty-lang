@@ -9,7 +9,7 @@ use krusty_core::syntax::parser::Phrase;
 use krusty_core::syntax::evaluator::NameSpace;
 
 #[macro_use] extern crate krusty_core;
-use krusty_core::lib::helper;
+use krusty_core::lib::{moddef, helper};
 
 
 fn _read_dir_to_list(dirpath: &PathBuf) -> Result<Vec<Phrase>, std::io::Error> {
@@ -51,7 +51,7 @@ pub fn _listdir(_ns: &mut NameSpace, args: &Vec<Phrase>) -> Phrase {
 }
 
 #[no_mangle]
-pub fn load(m_vars: &mut helper::ModuleVars) {
+pub fn load(m_vars: &mut moddef::ModuleVars) {
     helper::load_func(m_vars, "listdir", _listdir);
 }
 

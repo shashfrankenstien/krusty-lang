@@ -7,7 +7,7 @@ use libloading;
 use lazy_static::lazy_static; // 1.4.0
 use std::sync::Mutex;
 
-use crate::lib::helper;
+use crate::syntax::parser::Obj;
 
 
 lazy_static! {
@@ -15,9 +15,13 @@ lazy_static! {
     static ref _DYLIB_REFS: Mutex<HashMap<PathBuf, libloading::Library>> = Mutex::new(HashMap::new());
 }
 
+pub type ModuleVars = HashMap<String, Obj>;
+pub type DynLoadSignature = fn(&mut ModuleVars);
+
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Module {
-    pub vars: helper::ModuleVars,
+    pub vars: ModuleVars,
     pub path: Option<PathBuf>,
 }
 
@@ -45,7 +49,7 @@ impl Module {
 
     fn _load_dylib_funcs(&mut self, lib: &libloading::Library) {
         unsafe {
-            let load_func: libloading::Symbol<helper::DynLoadSignature> = lib.get(b"load").expect("library load error2");
+            let load_func: libloading::Symbol<DynLoadSignature> = lib.get(b"load").expect("library load error2");
             load_func(&mut self.vars);
         }
     }
