@@ -17,6 +17,27 @@ use crate::syntax::parser::Phrase;
 pub type ModuleVars = HashMap<String, Phrase>;
 pub type DynLoadSignature = fn(&mut ModuleVars);
 
+
+#[macro_export]
+macro_rules! func_nargs_eq {
+    ($vector:expr, $count:expr) => {
+        if $vector.len() != $count {
+            let msg = format!("expected {}, but received {} args", $count, $vector.len());
+            panic!(msg)
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! func_nargs_le {
+    ($vector:expr, $count:expr) => {
+        if $vector.len() > $count {
+            let msg = format!("expected 0..{}, but received {} args", $count, $vector.len());
+            panic!(msg)
+        }
+    };
+}
+
 pub fn load_func(hm: &mut ModuleVars, name: &str, f: funcdef::NativeFuncType) {
     hm.insert(name.to_string(), Phrase::NativeFunc(
         funcdef::NativeFuncDef::new(f, name)

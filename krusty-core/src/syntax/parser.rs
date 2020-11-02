@@ -5,7 +5,7 @@ use std::fmt;
 use std::env; // required for print_verbose! macro
 
 use crate::syntax::lexer;
-use crate::lib::funcdef;
+use crate::lib::{funcdef, moddef};
 
 
 
@@ -21,7 +21,7 @@ pub enum Phrase {
     Func(Box<funcdef::FuncDef>),
     FuncBody(Vec<Expression>),
     NativeFunc(funcdef::NativeFuncDef),
-    Mod(funcdef::Module),
+    Mod(moddef::Module),
     ModBody(Vec<Expression>), // same definition as FuncBody, but evaluated differently
 }
 

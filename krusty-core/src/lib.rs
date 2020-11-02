@@ -12,9 +12,11 @@ pub mod syntax {
 
 
 pub mod lib {
-    pub mod funcdef;
-    pub mod builtins;
+    #[macro_use]
     pub mod helper;
+    pub mod funcdef;
+    pub mod moddef;
+    pub mod builtins;
 }
 
 

@@ -37,9 +37,7 @@ pub fn _print(_: &mut NameSpace, args: &Vec<Phrase>) -> Phrase {
 
 
 pub fn _type(_: &mut NameSpace, args: &Vec<Phrase>) -> Phrase {
-    if args.len() != 1 {
-        panic!("'type' function takes only one argument")
-    }
+    func_nargs_eq!(args, 1);
     match args[0] {
         Phrase::Object(Token::Text(_)) => Phrase::Object(Token::Text("<Text>".to_string())),
         Phrase::Object(Token::Number(_)) => Phrase::Object(Token::Text("<Number>".to_string())),
@@ -58,9 +56,7 @@ pub fn _type(_: &mut NameSpace, args: &Vec<Phrase>) -> Phrase {
 // ================ if =======================
 
 pub fn _if(_: &mut NameSpace, args: &Vec<Phrase>) -> Phrase {
-    if args.len() != 3 {
-        panic!("'if' function takes only 3 arguments, {} provided", args.len())
-    }
+    func_nargs_eq!(args, 3);
     let condition = match &args[0] {
         Phrase::List(l) => l[0].get_bool().unwrap(),
         Phrase::Bool(b) => *b,
@@ -75,9 +71,7 @@ pub fn _if(_: &mut NameSpace, args: &Vec<Phrase>) -> Phrase {
 // ================ import ================
 
 pub fn _import(ns: &mut NameSpace, args: &Vec<Phrase>) -> Phrase {
-    if args.len() != 1 {
-        panic!("can only import one at a time for now")
-    }
+    func_nargs_eq!(args, 1);
     match &args[0] {
         Phrase::Object(Token::Text(p)) => {
             let mut p = ns.get_relative_path(p);
@@ -99,9 +93,7 @@ pub fn _import(ns: &mut NameSpace, args: &Vec<Phrase>) -> Phrase {
 
 
 pub fn _import_native(ns: &mut NameSpace, args: &Vec<Phrase>) -> Phrase {
-    if args.len() != 1 {
-        panic!("can only import one at a time for now")
-    }
+    func_nargs_eq!(args, 1);
     match &args[0] {
         Phrase::Object(Token::Text(p)) => {
             let mut p = ns.get_relative_path(&p);
@@ -119,12 +111,21 @@ pub fn _import_native(ns: &mut NameSpace, args: &Vec<Phrase>) -> Phrase {
 }
 
 
+pub fn _spill(ns: &mut NameSpace, args: &Vec<Obj>) -> Obj {
+    func_nargs_eq!(args, 1);
+    match &args[0] {
+        Obj::Mod(m) => {
+            ns.module.vars.extend(m.vars.clone());
+        },
+        _ => ()
+    }
+    Obj::Null
+}
+
 // ================ iter ================
 
 pub fn _len(_: &mut NameSpace, args: &Vec<Phrase>) -> Phrase {
-    if args.len() != 1 {
-        panic!("can only import one at a time for now")
-    }
+    func_nargs_eq!(args, 1);
     let length = match &args[0] {
         Phrase::List(l) => l.len(),
         Phrase::Object(Token::Text(t)) => t.len(),
@@ -134,9 +135,7 @@ pub fn _len(_: &mut NameSpace, args: &Vec<Phrase>) -> Phrase {
 }
 
 pub fn _foreach(ns: &mut NameSpace, args: &Vec<Phrase>) -> Phrase {
-    if args.len() != 2 {
-        panic!("illegal number of arguments. Expected 2")
-    }
+    func_nargs_eq!(args, 2);
     if let Phrase::Func(_) | Phrase::NativeFunc(_) = &args[1] {
         let res: Vec<Phrase>;
         return match &args[0] {
@@ -158,9 +157,7 @@ pub fn _foreach(ns: &mut NameSpace, args: &Vec<Phrase>) -> Phrase {
 // ================ module inspect ================
 
 pub fn _vars(ns: &mut NameSpace, args: &Vec<Phrase>) -> Phrase {
-    if args.len() > 1 {
-        panic!("illegal number of arguments. Expected 0 or 1")
-    }
+    func_nargs_le!(args, 1); // 0 or 1 args
     let mut vars: Vec<Phrase> = Vec::new();
     if args.len() == 0 {
         for (k,_) in &ns.module.vars {
@@ -196,5 +193,5 @@ pub fn load(env_native: &mut HashMap<String, Phrase>) {
 
     helper::load_func(env_native, "import", _import);
     helper::load_func(env_native, "import_native", _import_native);
-
+    helper::load_func(env_native, "spill", _spill);
 }

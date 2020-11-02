@@ -8,6 +8,7 @@ use krusty_core::syntax::lexer::Token;
 use krusty_core::syntax::parser::Phrase;
 use krusty_core::syntax::evaluator::NameSpace;
 
+#[macro_use] extern crate krusty_core;
 use krusty_core::lib::helper;
 
 
@@ -24,9 +25,7 @@ fn _read_dir_to_list(dirpath: &PathBuf) -> Result<Vec<Phrase>, std::io::Error> {
 }
 
 pub fn _listdir(_ns: &mut NameSpace, args: &Vec<Phrase>) -> Phrase {
-    if args.len() > 1 {
-        panic!("takes 0 or 1 arguments, {} supplied", args.len())
-    }
+    func_nargs_le!(args, 1); // 0 or 1 args
     match args.len() {
         0 => {
             let cwd = env::current_dir().unwrap_or(PathBuf::from("."));

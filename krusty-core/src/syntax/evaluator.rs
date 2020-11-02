@@ -7,7 +7,7 @@ use std::env; // required for print_verbose! macro
 
 use crate::syntax::parser::{Phrase, Expression};
 use crate::syntax::lexer::Token;
-use crate::lib::{funcdef, builtins};
+use crate::lib::{moddef, builtins};
 
 
 
@@ -15,7 +15,7 @@ use crate::lib::{funcdef, builtins};
 pub struct NameSpace<'a> {
     builtin_funcs: Option<HashMap<String, Phrase>>,
     parent: Option<&'a NameSpace<'a>>,
-    pub module: funcdef::Module,
+    pub module: moddef::Module,
 }
 
 
@@ -28,7 +28,7 @@ impl<'a> NameSpace<'a> {
             builtin_funcs = Some(b);
         }
         NameSpace {
-            module: funcdef::Module::new(path),
+            module: moddef::Module::new(path),
             builtin_funcs,
             parent,
         }
