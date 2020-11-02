@@ -22,7 +22,10 @@ pub fn _print(_: &mut NameSpace, args: &Vec<Phrase>) -> Phrase {
                 }
                 match &args[idx] {
                     Phrase::Object(Token::Number(n)) => print!("{}", n),
-                    Phrase::Object(Token::Text(t)) => print!("{}", t),
+                    Phrase::Object(Token::Text(t)) => {
+                        // FIXME: this is a hack to implement unicode newline and tab characters
+                        print!("{}", t.replace("\\n", "\u{000A}").replace("\\t", "\u{0009}"))
+                    },
                     _ => print!("{}", args[idx]),
                 };
             };
