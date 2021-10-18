@@ -1,14 +1,14 @@
 use crate::syntax::evaluator::NameSpace;
-use crate::syntax::parser::Phrase;
+use crate::syntax::parser::Block;
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct FuncDef {
-    pub args: Phrase,
-    pub body: Phrase
+    pub args: Block,
+    pub body: Block
 }
 
 
-pub type NativeFuncType = fn(&mut NameSpace, args: &Vec<Phrase>) -> Phrase;
+pub type NativeFuncType = fn(&mut NameSpace, args: &Vec<Block>) -> Block;
 
 #[derive(Clone)]
 pub struct NativeFuncDef {

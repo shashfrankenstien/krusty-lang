@@ -5,7 +5,7 @@ use path_slash::PathBufExt; // for PatjBuf::from_slash() trait
 #[cfg(debug_assertions)]
 use std::env; // required for print_verbose! macro
 
-use crate::syntax::parser::{Phrase, Expression};
+use crate::syntax::parser::{Block, Expression};
 use crate::syntax::lexer::Token;
 use crate::lib::{moddef, builtins};
 
@@ -13,7 +13,7 @@ use crate::lib::{moddef, builtins};
 
 #[derive(Debug)]
 pub struct NameSpace<'a> {
-    builtin_funcs: Option<HashMap<String, Phrase>>,
+    builtin_funcs: Option<HashMap<String, Block>>,
     parent: Option<&'a NameSpace<'a>>,
     pub module: moddef::Module,
 }
@@ -21,7 +21,7 @@ pub struct NameSpace<'a> {
 
 impl<'a> NameSpace<'a> {
     pub fn new(path: Option<&PathBuf>, parent: Option<&'a NameSpace<'a>>) -> NameSpace<'a> {
-        let mut builtin_funcs: Option<HashMap<String, Phrase>> = None;
+        let mut builtin_funcs: Option<HashMap<String, Block>> = None;
         if let None = parent {
             let mut b = HashMap::new();
             builtins::load(&mut b);
@@ -34,15 +34,15 @@ impl<'a> NameSpace<'a> {
         }
     }
 
-    pub fn to_object(self) -> Phrase {
-        Phrase::Mod(self.module)
+    pub fn to_object(self) -> Block {
+        Block::Mod(self.module)
     }
 
-    pub fn run(&mut self, elist: &Vec<Expression>) -> Phrase {
-        let mut return_val: Phrase = Phrase::Null;
+    pub fn run(&mut self, elist: &Vec<Expression>) -> Block {
+        let mut return_val: Block = Block::Null;
         for (_i, o) in elist.iter().enumerate() {
             return_val = self.solve_expr(o);
-            if let Phrase::Operator(Token::FuncReturn) = o.op {
+            if let Block::Operator(Token::FuncReturn) = o.op {
                 if let None = self.parent {
                     panic!("cannot use return here!")
                 } else {
@@ -54,7 +54,7 @@ impl<'a> NameSpace<'a> {
     }
 
 
-    fn get(&self, key: &String) -> Option<Phrase> {
+    fn get(&self, key: &String) -> Option<Block> {
         match self.module.vars.get(key) {
             Some(v) => Some(v.clone()),
             None => {
@@ -76,7 +76,7 @@ impl<'a> NameSpace<'a> {
         }
     }
 
-    fn set(&mut self, key: String, value: Phrase) {
+    fn set(&mut self, key: String, value: Block) {
         self.module.vars.insert(key, value);
     }
 
@@ -115,24 +115,24 @@ impl<'a> NameSpace<'a> {
         }
     }
 
-    pub fn resolve(&mut self, o: &Phrase) -> Phrase {
+    pub fn resolve(&mut self, o: &Block) -> Block {
         match o {
-            Phrase::Expr(ex) => self.solve_expr(ex),
-            Phrase::Object(Token::Symbol(s)) => self.get(s).unwrap(),
-            Phrase::List(l) => Phrase::List(l.into_iter().map(|x| self.resolve(x)).collect()),
-            Phrase::ModBody(m) => {
+            Block::Expr(ex) => self.solve_expr(ex),
+            Block::Object(Token::Symbol(s)) => self.get(s).unwrap(),
+            Block::List(l) => Block::List(l.into_iter().map(|x| self.resolve(x)).collect()),
+            Block::ModBody(m) => {
                 // resolve ModBody to Mod
                 let mut ns = NameSpace::new(None, Some(self));
                 ns.run(&m);
                 ns.to_object()
             },
-            Phrase::FuncBody(_) => Phrase::Null, // this should never be called I think
+            Block::FuncBody(_) => Block::Null, // this should never be called I think
             _ => o.clone()
         }
     }
 
-    fn assign(&mut self, key: &Phrase, value: &Phrase) {
-        if let Phrase::Object(Token::Symbol(var)) = key {
+    fn assign(&mut self, key: &Block, value: &Block) {
+        if let Block::Object(Token::Symbol(var)) = key {
             print_verbose!("assign {:?}", var);
             let val = self.resolve(value);
             self.set(var.to_string(), val);
@@ -142,15 +142,15 @@ impl<'a> NameSpace<'a> {
     }
 
 
-    fn solve_arith(&mut self, op: char, elems: &Vec<Phrase>) ->Result<Phrase, String> {
+    fn solve_arith(&mut self, op: char, elems: &Vec<Block>) ->Result<Block, String> {
         let mut res: Option<f64> = None;//f64 = if "+-".contains(op) {0.0} else {1.0};
 
         for e in elems.iter() {
             let num = match self.resolve(e) {
-                Phrase::Object(Token::Number(n)) => n,
-                Phrase::List(l) if l.len()==1 => { // single element list - expressions enclosed in ()
+                Block::Object(Token::Number(n)) => n,
+                Block::List(l) if l.len()==1 => { // single element list - expressions enclosed in ()
                     match l[0] {
-                        Phrase::Object(Token::Number(n)) => n,
+                        Block::Object(Token::Number(n)) => n,
                         _ => return Err(format!("Cannot perform Arith on {:?}", e))
                     }
                 },
@@ -166,39 +166,39 @@ impl<'a> NameSpace<'a> {
                 _ => Some(num)
             };
         }
-        return Ok(Phrase::Object(Token::Number(res.expect("Arith error")))) //return
+        return Ok(Block::Object(Token::Number(res.expect("Arith error")))) //return
     }
 
 
-    fn solve_comparison(&mut self, op: &String, elems: &Vec<Phrase>) ->Result<Phrase, String> {
+    fn solve_comparison(&mut self, op: &String, elems: &Vec<Block>) ->Result<Block, String> {
         // this function uses Rust's PartialEq and PartialOrd to do comparison
-        let vals: Vec<Phrase> = elems.iter().map(|x| self.resolve(x)).collect();
+        let vals: Vec<Block> = elems.iter().map(|x| self.resolve(x)).collect();
         // println!("{} ", builtins::_type(&vec![vals[0].clone()]) == builtins::_type(&vec![vals[1].clone()]));
         print_verbose!("compare {} {:?}", op, vals);
         match &op[..] {
-            "==" => Ok(Phrase::Bool(vals[0]==vals[1])),
-            "!=" => Ok(Phrase::Bool(vals[0]!=vals[1])),
-            ">" => Ok(Phrase::Bool(vals[0]>vals[1])),
-            "<" => Ok(Phrase::Bool(vals[0]<vals[1])),
-            ">=" => Ok(Phrase::Bool(vals[0]>=vals[1])),
-            "<=" => Ok(Phrase::Bool(vals[0]<=vals[1])),
+            "==" => Ok(Block::Bool(vals[0]==vals[1])),
+            "!=" => Ok(Block::Bool(vals[0]!=vals[1])),
+            ">" => Ok(Block::Bool(vals[0]>vals[1])),
+            "<" => Ok(Block::Bool(vals[0]<vals[1])),
+            ">=" => Ok(Block::Bool(vals[0]>=vals[1])),
+            "<=" => Ok(Block::Bool(vals[0]<=vals[1])),
             _ => Err("Unsupported operator".to_string())
         }
     }
 
-    pub fn eval_func_obj(&mut self, func: &Phrase, args: &Phrase, name: Option<&String>) -> Phrase {
+    pub fn eval_func_obj(&mut self, func: &Block, args: &Block, name: Option<&String>) -> Block {
         let name = match name {
             Some(s) => s,
             None => "anonymous"
         };
 
-        let args: Vec<Phrase> = match args {
-            Phrase::List(l) => l.to_vec(),
+        let args: Vec<Block> = match args {
+            Block::List(l) => l.to_vec(),
             _ => vec![args.clone()]
         };
 
         match func {
-            Phrase::Func(f) => {
+            Block::Func(f) => {
                 let req_args = f.args.get_list().expect("function definition error");
                 if req_args.len() != args.len() {
                     panic!("function arguments for '{}' don't match", name);
@@ -209,20 +209,20 @@ impl<'a> NameSpace<'a> {
                     }
                     print_verbose!("CALL {} {:?}", name, f.body);
                     match &f.body { // return function result
-                        Phrase::FuncBody(elist) => exec_env.run(&elist),
+                        Block::FuncBody(elist) => exec_env.run(&elist),
                         _ => panic!("function '{}' definition error", name),
                     }
                 }
             },
-            Phrase::NativeFunc(f) => {
-                let clean_args: Vec<Phrase> = args.iter().map(|x| self.resolve(x)).collect();
+            Block::NativeFunc(f) => {
+                let clean_args: Vec<Block> = args.iter().map(|x| self.resolve(x)).collect();
                 (f.func)(self, &clean_args)
             }
             _ => panic!("function '{}' definition error", name)
         }
     }
 
-    fn eval_func(&mut self, name: &String, args: &Phrase) -> Phrase {
+    fn eval_func(&mut self, name: &String, args: &Block) -> Block {
         // println!("<F> {:?}", args);
         match self.get(name) {
             None => panic!("function '{}' not defined"),
@@ -232,28 +232,28 @@ impl<'a> NameSpace<'a> {
         }
     }
 
-    fn pick_index(&self, idx: &Phrase, things: &Phrase) -> Phrase {
+    fn pick_index(&self, idx: &Block, things: &Block) -> Block {
         // println!("{:?} [{:?}]", things, idx);
         match (idx, things) {
-            (Phrase::Object(Token::Number(n)), Phrase::List(a)) => a[*n as usize].clone(),
-            (Phrase::Object(Token::Number(n)), Phrase::Object(Token::Text(a))) => Phrase::Object(Token::Text(a.chars().nth(*n as usize).unwrap().to_string())),
+            (Block::Object(Token::Number(n)), Block::List(a)) => a[*n as usize].clone(),
+            (Block::Object(Token::Number(n)), Block::Object(Token::Text(a))) => Block::Object(Token::Text(a.chars().nth(*n as usize).unwrap().to_string())),
             _ => panic!("cannot index {:?} with {:?}", things, idx)
         }
-        // Phrase::Null
+        // Block::Null
     }
 
-    fn solve_expr(&mut self, exp: &Expression) -> Phrase {
+    fn solve_expr(&mut self, exp: &Expression) -> Block {
         // println!("<E> {:?}", exp);
         match &exp.op {
-            Phrase::Operator(Token::Assign) => {
+            Block::Operator(Token::Assign) => {
                 // elems should have only 2 members
                 if exp.elems.len() != 2 {
                     panic!("Illegal assignment");
                 }
                 self.assign(&exp.elems[0], &exp.elems[1]);
-                Phrase::Null
+                Block::Null
             },
-            Phrase::Operator(Token::Arith(op)) => {
+            Block::Operator(Token::Arith(op)) => {
                 // elems should have only 2 members
                 if exp.elems.len() != 2 {
                     panic!("Illegal arithmetic operation");
@@ -263,7 +263,7 @@ impl<'a> NameSpace<'a> {
                     Err(e) => panic!("{}", e)
                 } // return
             },
-            Phrase::Operator(Token::Comparison(op)) => {
+            Block::Operator(Token::Comparison(op)) => {
                 // elems should have only 2 members
                 if exp.elems.len() != 2 {
                     panic!("Illegal comparison operation");
@@ -273,38 +273,38 @@ impl<'a> NameSpace<'a> {
                     Err(e) => panic!("{}", e)
                 } // return
             },
-            Phrase::Operator(Token::FuncCall) => {
+            Block::Operator(Token::FuncCall) => {
                 match &exp.elems[0] {
-                    Phrase::Object(Token::Symbol(func_name)) => self.eval_func(func_name, &exp.elems[1]),
-                    Phrase::Func(_) => self.eval_func_obj(&exp.elems[0], &exp.elems[1], None),
-                    Phrase::Expr(ex) => {
+                    Block::Object(Token::Symbol(func_name)) => self.eval_func(func_name, &exp.elems[1]),
+                    Block::Func(_) => self.eval_func_obj(&exp.elems[0], &exp.elems[1], None),
+                    Block::Expr(ex) => {
                         let func = self.solve_expr(&ex);
                         self.eval_func_obj(&func, &exp.elems[1], None)
                     },
-                    _ => Phrase::Null,
+                    _ => Block::Null,
                 }
             },
-            Phrase::Operator(Token::FuncReturn) => { // will only return a list type object??
-                let ret_list: Vec<Phrase> = exp.elems.iter().map(|e| self.resolve(e)).collect();
+            Block::Operator(Token::FuncReturn) => { // will only return a list type object??
+                let ret_list: Vec<Block> = exp.elems.iter().map(|e| self.resolve(e)).collect();
                 match ret_list.len() {
                     // We also unwrap these late evaluated lists in case it has 0 or 1 elements
-                    0 => Phrase::Null,
+                    0 => Block::Null,
                     1 => ret_list[0].clone(),
-                    _ => Phrase::List(ret_list)
+                    _ => Block::List(ret_list)
                 }
             },
-            Phrase::Operator(Token::List) => {
-                // These are some List type Expressions still unconverted to Phrase::List
+            Block::Operator(Token::List) => {
+                // These are some List type Expressions still unconverted to Block::List
                 // They are usually deep inside a function definition needing late evaluation
-                let ret_list: Vec<Phrase> = exp.elems.iter().map(|e| self.resolve(e)).collect();
+                let ret_list: Vec<Block> = exp.elems.iter().map(|e| self.resolve(e)).collect();
                 match ret_list.len() {
                     // We also unwrap these late evaluated lists in case it has 0 or 1 elements
-                    0 => Phrase::Null,
+                    0 => Block::Null,
                     1 => ret_list[0].clone(),
-                    _ => Phrase::List(ret_list)
+                    _ => Block::List(ret_list)
                 }
             },
-            Phrase::Operator(Token::Index) => {
+            Block::Operator(Token::Index) => {
                 if exp.elems.len() != 2 {
                     panic!("Illegal index operation");
                 }
@@ -312,17 +312,17 @@ impl<'a> NameSpace<'a> {
                 let idx = self.resolve(&exp.elems[1]);
                 self.pick_index(&idx, &val)
             },
-            Phrase::Operator(Token::Accessor) => {
+            Block::Operator(Token::Accessor) => {
                 if exp.elems.len() != 2 {
                     panic!("Illegal access operation");
                 }
                 match self.resolve(&exp.elems[0]) {
-                    Phrase::Mod(m) => {
+                    Block::Mod(m) => {
                         match &exp.elems[1] {
-                            Phrase::Object(Token::Symbol(s)) => m.vars.get(s).expect("member not found").clone(),
-                            Phrase::Expr(x) => {
+                            Block::Object(Token::Symbol(s)) => m.vars.get(s).expect("member not found").clone(),
+                            Block::Expr(x) => {
                                 match x.op {
-                                    Phrase::Operator(Token::Assign) => panic!("cannot assign into module"),
+                                    Block::Operator(Token::Assign) => panic!("cannot assign into module"),
                                     _ => {
                                         let mut ns = NameSpace { // create new execution namespace
                                             builtin_funcs: None,

@@ -10,7 +10,7 @@
 use std::path::PathBuf;
 
 use crate::lib::{funcdef, moddef};
-use crate::syntax::parser::Phrase;
+use crate::syntax::parser::Block;
 
 
 #[macro_export]
@@ -34,7 +34,7 @@ macro_rules! func_nargs_le {
 }
 
 pub fn load_func(hm: &mut moddef::ModuleVars, name: &str, f: funcdef::NativeFuncType) {
-    hm.insert(name.to_string(), Phrase::NativeFunc(
+    hm.insert(name.to_string(), Block::NativeFunc(
         funcdef::NativeFuncDef::new(f, name)
     ));
 }

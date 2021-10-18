@@ -7,7 +7,7 @@ use libloading;
 use lazy_static::lazy_static; // 1.4.0
 use std::sync::Mutex;
 
-use crate::syntax::parser::Phrase;
+use crate::syntax::parser::Block;
 
 
 lazy_static! {
@@ -15,7 +15,7 @@ lazy_static! {
     static ref _DYLIB_REFS: Mutex<HashMap<PathBuf, libloading::Library>> = Mutex::new(HashMap::new());
 }
 
-pub type ModuleVars = HashMap<String, Phrase>;
+pub type ModuleVars = HashMap<String, Block>;
 pub type DynLoadSignature = fn(&mut ModuleVars);
 
 

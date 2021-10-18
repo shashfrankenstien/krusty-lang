@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::env; // required for print_verbose! macro
 
 use crate::syntax::{lexer, lexer::Token};
-use crate::syntax::{parser, parser::Phrase};
+use crate::syntax::{parser, parser::Block};
 use crate::syntax::evaluator::NameSpace;
 
 use crate::lib::helper;
@@ -12,7 +12,7 @@ use crate::lib::helper;
 // ================ print =======================
 
 
-pub fn _print(_: &mut NameSpace, args: &Vec<Phrase>) -> Phrase {
+pub fn _print(_: &mut NameSpace, args: &Vec<Block>) -> Block {
     match args.len() {
         0 => println!(""),
         _ => {
@@ -21,8 +21,8 @@ pub fn _print(_: &mut NameSpace, args: &Vec<Phrase>) -> Phrase {
                     print!(" ");
                 }
                 match &args[idx] {
-                    Phrase::Object(Token::Number(n)) => print!("{}", n),
-                    Phrase::Object(Token::Text(t)) => {
+                    Block::Object(Token::Number(n)) => print!("{}", n),
+                    Block::Object(Token::Text(t)) => {
                         // FIXME: this is a hack to implement unicode newline and tab characters
                         print!("{}", t.replace("\\n", "\u{000A}").replace("\\t", "\u{0009}"))
                     },
@@ -32,34 +32,34 @@ pub fn _print(_: &mut NameSpace, args: &Vec<Phrase>) -> Phrase {
             print!("\n");
         },
     };
-    Phrase::Null
+    Block::Null
 }
 
 
-pub fn _type(_: &mut NameSpace, args: &Vec<Phrase>) -> Phrase {
+pub fn _type(_: &mut NameSpace, args: &Vec<Block>) -> Block {
     func_nargs_eq!(args, 1);
     match args[0] {
-        Phrase::Object(Token::Text(_)) => Phrase::Object(Token::Text("<Text>".to_string())),
-        Phrase::Object(Token::Number(_)) => Phrase::Object(Token::Text("<Number>".to_string())),
-        Phrase::Func(_) => Phrase::Object(Token::Text("<Func>".to_string())),
-        Phrase::NativeFunc(_) => Phrase::Object(Token::Text("<NativeFunc>".to_string())),
-        Phrase::List(_) => Phrase::Object(Token::Text("<List>".to_string())),
-        Phrase::Bool(_) => Phrase::Object(Token::Text("<Bool>".to_string())),
-        Phrase::Expr(_) => Phrase::Object(Token::Text("<Expr>".to_string())),
-        Phrase::FuncBody(_) => Phrase::Object(Token::Text("<FuncBody>".to_string())),
-        Phrase::Mod(_) => Phrase::Object(Token::Text("<Module>".to_string())),
-        Phrase::Null => Phrase::Object(Token::Text("<Null>".to_string())),
-        _ => Phrase::Object(Token::Text("<Type Not Found>".to_string()))
+        Block::Object(Token::Text(_)) => Block::Object(Token::Text("<Text>".to_string())),
+        Block::Object(Token::Number(_)) => Block::Object(Token::Text("<Number>".to_string())),
+        Block::Func(_) => Block::Object(Token::Text("<Func>".to_string())),
+        Block::NativeFunc(_) => Block::Object(Token::Text("<NativeFunc>".to_string())),
+        Block::List(_) => Block::Object(Token::Text("<List>".to_string())),
+        Block::Bool(_) => Block::Object(Token::Text("<Bool>".to_string())),
+        Block::Expr(_) => Block::Object(Token::Text("<Expr>".to_string())),
+        Block::FuncBody(_) => Block::Object(Token::Text("<FuncBody>".to_string())),
+        Block::Mod(_) => Block::Object(Token::Text("<Module>".to_string())),
+        Block::Null => Block::Object(Token::Text("<Null>".to_string())),
+        _ => Block::Object(Token::Text("<Type Not Found>".to_string()))
     }
 }
 
 // ================ if =======================
 
-pub fn _if(_: &mut NameSpace, args: &Vec<Phrase>) -> Phrase {
+pub fn _if(_: &mut NameSpace, args: &Vec<Block>) -> Block {
     func_nargs_eq!(args, 3);
     let condition = match &args[0] {
-        Phrase::List(l) => l[0].get_bool().unwrap(),
-        Phrase::Bool(b) => *b,
+        Block::List(l) => l[0].get_bool().unwrap(),
+        Block::Bool(b) => *b,
         _ => panic!("unsupported condition statement")
     };
 
@@ -70,10 +70,10 @@ pub fn _if(_: &mut NameSpace, args: &Vec<Phrase>) -> Phrase {
 
 // ================ import ================
 
-pub fn _import(ns: &mut NameSpace, args: &Vec<Phrase>) -> Phrase {
+pub fn _import(ns: &mut NameSpace, args: &Vec<Block>) -> Block {
     func_nargs_eq!(args, 1);
     match &args[0] {
-        Phrase::Object(Token::Text(p)) => {
+        Block::Object(Token::Text(p)) => {
             let mut p = ns.get_relative_path(p);
             if !p.ends_with("krt") {
                 p.set_extension("krt");
@@ -86,16 +86,16 @@ pub fn _import(ns: &mut NameSpace, args: &Vec<Phrase>) -> Phrase {
             new_ns.run(&tree);
             new_ns.to_object()
         },
-        _ => Phrase::Null
+        _ => Block::Null
     }
 }
 
 
 
-pub fn _import_native(ns: &mut NameSpace, args: &Vec<Phrase>) -> Phrase {
+pub fn _import_native(ns: &mut NameSpace, args: &Vec<Block>) -> Block {
     func_nargs_eq!(args, 1);
     match &args[0] {
-        Phrase::Object(Token::Text(p)) => {
+        Block::Object(Token::Text(p)) => {
             let mut p = ns.get_relative_path(&p);
             // let fname = libloading::library_filename(p.file_name().unwrap());
             helper::convert_dylib_os_name(&mut p);
@@ -106,46 +106,46 @@ pub fn _import_native(ns: &mut NameSpace, args: &Vec<Phrase>) -> Phrase {
             new_ns.module.load_dylib();
             new_ns.to_object()
         },
-        _ => Phrase::Null
+        _ => Block::Null
     }
 }
 
 
-pub fn _spill(ns: &mut NameSpace, args: &Vec<Phrase>) -> Phrase {
+pub fn _spill(ns: &mut NameSpace, args: &Vec<Block>) -> Block {
     func_nargs_eq!(args, 1);
     match &args[0] {
-        Phrase::Mod(m) => {
+        Block::Mod(m) => {
             ns.module.vars.extend(m.vars.clone());
         },
         _ => ()
     }
-    Phrase::Null
+    Block::Null
 }
 
 // ================ iter ================
 
-pub fn _len(_: &mut NameSpace, args: &Vec<Phrase>) -> Phrase {
+pub fn _len(_: &mut NameSpace, args: &Vec<Block>) -> Block {
     func_nargs_eq!(args, 1);
     let length = match &args[0] {
-        Phrase::List(l) => l.len(),
-        Phrase::Object(Token::Text(t)) => t.len(),
+        Block::List(l) => l.len(),
+        Block::Object(Token::Text(t)) => t.len(),
         _ => panic!("len() not supported")
     };
-    Phrase::Object(Token::Number(length as f64))
+    Block::Object(Token::Number(length as f64))
 }
 
-pub fn _foreach(ns: &mut NameSpace, args: &Vec<Phrase>) -> Phrase {
+pub fn _foreach(ns: &mut NameSpace, args: &Vec<Block>) -> Block {
     func_nargs_eq!(args, 2);
-    if let Phrase::Func(_) | Phrase::NativeFunc(_) = &args[1] {
-        let res: Vec<Phrase>;
+    if let Block::Func(_) | Block::NativeFunc(_) = &args[1] {
+        let res: Vec<Block>;
         return match &args[0] {
-            Phrase::List(l) => {
+            Block::List(l) => {
                 res = l.iter().map(|x| ns.eval_func_obj(&args[1], &x, None)).collect();
-                Phrase::List(res)
+                Block::List(res)
             },
-            Phrase::Object(Token::Text(t)) => {
-                res = t.chars().map(|c| ns.eval_func_obj(&args[1], &Phrase::Object(Token::Text(c.to_string())), None)).collect();
-                Phrase::List(res)
+            Block::Object(Token::Text(t)) => {
+                res = t.chars().map(|c| ns.eval_func_obj(&args[1], &Block::Object(Token::Text(c.to_string())), None)).collect();
+                Block::List(res)
             },
             _ => panic!("iteration not supported")
         }
@@ -156,22 +156,22 @@ pub fn _foreach(ns: &mut NameSpace, args: &Vec<Phrase>) -> Phrase {
 
 // ================ module inspect ================
 
-pub fn _vars(ns: &mut NameSpace, args: &Vec<Phrase>) -> Phrase {
+pub fn _vars(ns: &mut NameSpace, args: &Vec<Block>) -> Block {
     func_nargs_le!(args, 1); // 0 or 1 args
-    let mut vars: Vec<Phrase> = Vec::new();
+    let mut vars: Vec<Block> = Vec::new();
     if args.len() == 0 {
         for (k,_) in &ns.module.vars {
-            vars.push(Phrase::Object(Token::Text(k.clone())));
+            vars.push(Block::Object(Token::Text(k.clone())));
         }
-        Phrase::List(vars)
+        Block::List(vars)
     }
-    else if let Phrase::Mod(m) = &args[0] {
+    else if let Block::Mod(m) = &args[0] {
         for (k,_) in &m.vars {
-            vars.push(Phrase::Object(Token::Text(k.clone())));
+            vars.push(Block::Object(Token::Text(k.clone())));
         }
-        Phrase::List(vars)
+        Block::List(vars)
     } else {
-        Phrase::Null
+        Block::Null
     }
 }
 
@@ -179,10 +179,10 @@ pub fn _vars(ns: &mut NameSpace, args: &Vec<Phrase>) -> Phrase {
 // ================ namespace helper functions ====================
 
 
-pub fn load(env_native: &mut HashMap<String, Phrase>) {
-    env_native.insert("null".to_string(), Phrase::Null);
-    env_native.insert("true".to_string(), Phrase::Bool(true));
-    env_native.insert("false".to_string(), Phrase::Bool(false));
+pub fn load(env_native: &mut HashMap<String, Block>) {
+    env_native.insert("null".to_string(), Block::Null);
+    env_native.insert("true".to_string(), Block::Bool(true));
+    env_native.insert("false".to_string(), Block::Bool(false));
 
     helper::load_func(env_native, "print", _print);
     helper::load_func(env_native, "type", _type);

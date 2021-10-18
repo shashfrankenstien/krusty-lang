@@ -10,14 +10,14 @@ use crate::lib::{funcdef, moddef};
 
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
-pub enum Phrase {
+pub enum Block {
     Null,
     Bool(bool),
     Object(lexer::Token),
     Operator(lexer::Token),
     Scope(char),
-    Expr(Box<Expression>), // use Box since Expression has Phrase type members (recursive)
-    List(Vec<Phrase>),
+    Expr(Box<Expression>), // use Box since Expression has Block type members (recursive)
+    List(Vec<Block>),
     Func(Box<funcdef::FuncDef>),
     FuncBody(Vec<Expression>),
     NativeFunc(funcdef::NativeFuncDef),
@@ -27,14 +27,14 @@ pub enum Phrase {
 
 
 
-impl fmt::Display for Phrase {
+impl fmt::Display for Block {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Phrase::Object(o) => write!(f, "{}", o),
-            Phrase::Operator(op) => write!(f, "{}", op),
-            Phrase::Bool(b) => write!(f, "{}", b),
-            Phrase::Null => write!(f, "null"),
-            Phrase::List(l) => {
+            Block::Object(o) => write!(f, "{}", o),
+            Block::Operator(op) => write!(f, "{}", op),
+            Block::Bool(b) => write!(f, "{}", b),
+            Block::Null => write!(f, "null"),
+            Block::List(l) => {
                 write!(f, "(").unwrap();
                 if l.len() > 0 {
                     for i in 0..(l.len()-1) {
@@ -44,21 +44,21 @@ impl fmt::Display for Phrase {
                 }
                 write!(f, ")")
             },
-            Phrase::Mod(m) => write!(f, "<module at {:p}>", m),
+            Block::Mod(m) => write!(f, "<module at {:p}>", m),
             _ => write!(f, "{:?}", self),
         }
     }
 }
 
 
-impl Phrase {
-    fn categorize(tok: &lexer::Token) -> Phrase {
+impl Block {
+    fn categorize(tok: &lexer::Token) -> Block {
         use lexer::Token;
         match tok {
             Token::Symbol(_)
             | Token::Number(_)
             | Token::Text(_)
-                => Phrase::Object(tok.clone()),
+                => Block::Object(tok.clone()),
 
             Token::Arith(_)
             | Token::Comparison(_)
@@ -69,23 +69,23 @@ impl Phrase {
             | Token::FuncReturn
             | Token::Index
             | Token::Accessor
-                => Phrase::Operator(tok.clone()),
+                => Block::Operator(tok.clone()),
 
-            Token::ScopeStart(s) => Phrase::Scope(*s),
-            _ => Phrase::Null
+            Token::ScopeStart(s) => Block::Scope(*s),
+            _ => Block::Null
         }
     }
 
-    pub fn get_list(&self) -> Option<Vec<Phrase>> {
+    pub fn get_list(&self) -> Option<Vec<Block>> {
         match self {
-            Phrase::List(l) => Some(l.clone()),
+            Block::List(l) => Some(l.clone()),
             _ => None,
         }
     }
 
     pub fn get_bool(&self) -> Option<bool> {
         match self {
-            Phrase::Bool(b) => Some(*b),
+            Block::Bool(b) => Some(*b),
             _ => None,
         }
     }
@@ -96,8 +96,8 @@ impl Phrase {
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct Expression {
-    pub op: Phrase,
-    pub elems: Vec<Phrase>,
+    pub op: Block,
+    pub elems: Vec<Block>,
 }
 
 
@@ -105,38 +105,38 @@ impl Expression {
 
     fn new() -> Expression {
         Expression {
-            op: Phrase::Null,
+            op: Block::Null,
             elems: Vec::new(),
         }
     }
 
-    pub fn to_object(mut self) -> Phrase {
-        if self.op == Phrase::Null && self.elems.len() == 1 {
+    pub fn to_object(mut self) -> Block {
+        if self.op == Block::Null && self.elems.len() == 1 {
             self.elems.pop().unwrap()
         } else
-        if let Phrase::Operator(lexer::Token::List) | Phrase::Null = self.op {
-            Phrase::List(self.elems)
+        if let Block::Operator(lexer::Token::List) | Block::Null = self.op {
+            Block::List(self.elems)
         } else
-        if let Phrase::Operator(lexer::Token::FuncDef) = self.op {
+        if let Block::Operator(lexer::Token::FuncDef) = self.op {
             if self.elems.len() == 2 {
                 let body = self.elems.pop().unwrap();
                 let mut args = self.elems.pop().unwrap();
-                // Phrase::Func(FuncDef {args, body})
+                // Block::Func(FuncDef {args, body})
                 match args { // convert args to list
-                    Phrase::List(_) => (),
-                    _ => args = Phrase::List(vec![args])
+                    Block::List(_) => (),
+                    _ => args = Block::List(vec![args])
                 }
                 match body {
-                    Phrase::FuncBody(_) | Phrase::Expr(_) => (),
+                    Block::FuncBody(_) | Block::Expr(_) => (),
                     _ => panic!("Invalid function body")
                 }
-                Phrase::Func(Box::new(funcdef::FuncDef {args, body}))
+                Block::Func(Box::new(funcdef::FuncDef {args, body}))
             } else {
                 panic!("Illegal function definition - {:?}", self)
             }
         }
         else {
-            Phrase::Expr(Box::new(self))
+            Block::Expr(Box::new(self))
         }
     }
 
@@ -235,20 +235,20 @@ impl Expression {
                 tokens.inc();
                 break;
             }
-            let cat_tok = Phrase::categorize(&tok);
+            let cat_tok = Block::categorize(&tok);
             match cat_tok {
-                Phrase::Object(_) => {
+                Block::Object(_) => {
                     self.elems.push(cat_tok);
                 },
-                Phrase::Scope(s) => {
+                Block::Scope(s) => {
                     tokens.inc(); //skip over the scope start token
-                    let exp_obj: Phrase = match s {
+                    let exp_obj: Block = match s {
                         '{' => {
                             let scoped = Expression::parse_scope(tokens, Some(lexer::Token::ScopeEnd('}')));
-                            Phrase::ModBody(scoped) // same definition as FuncBody, but evaluated differently
+                            Block::ModBody(scoped) // same definition as FuncBody, but evaluated differently
                         },
                         '[' => {
-                            if let Phrase::Operator(lexer::Token::Index) = self.op {
+                            if let Block::Operator(lexer::Token::Index) = self.op {
                                 let mut ex = Expression::new();
                                 ex.parse(tokens, Some(lexer::Token::ScopeEnd(']')));
                                 ex.to_object()
@@ -267,7 +267,7 @@ impl Expression {
                                 ex_list.parse(tokens, Some(lexer::Token::ScopeEnd(')')));
                             } else {
                                 // parse each element
-                                ex_list.op = Phrase::Operator(lexer::Token::List);
+                                ex_list.op = Block::Operator(lexer::Token::List);
 
                                 for _ in 0..(elem_count - 1) {
                                     let mut ex = Expression::new();
@@ -297,7 +297,7 @@ impl Expression {
                         if let lexer::Token::FuncDef = *nxt_t { //Handle ()=>{} function definition
                             let mut exp = Expression::new();
                             exp.elems.push(exp_obj);
-                            exp.op = Phrase::Operator(lexer::Token::FuncDef);
+                            exp.op = Block::Operator(lexer::Token::FuncDef);
                             tokens.inc(); // go to next token after the funcdef token
                             match tokens.get_token() {
                                 None => panic!("Incomplete function definition"),
@@ -307,7 +307,7 @@ impl Expression {
                                             tokens.inc(); // move into scope
                                             let scoped = Expression::parse_scope(tokens, Some(lexer::Token::ScopeEnd('}')));
                                             print_verbose!("================{:?}", tokens.get_token());
-                                            exp.elems.push(Phrase::FuncBody(scoped));
+                                            exp.elems.push(Block::FuncBody(scoped));
                                         },
                                         _ => {
                                             let mut body_exp = Expression::new();
@@ -319,7 +319,7 @@ impl Expression {
                                 }
                             }
                             match exp.elems[1] {
-                                Phrase::FuncBody(_) | Phrase::Expr(_) => self.elems.push(exp.to_object()),
+                                Block::FuncBody(_) | Block::Expr(_) => self.elems.push(exp.to_object()),
                                 _ => panic!("Invalid function definition {:?}", exp) // func body should be FuncBody or Expr
                             };
                             // break; // function definition complete
@@ -334,12 +334,12 @@ impl Expression {
                 },
 
 
-                Phrase::Operator(op) => {
+                Block::Operator(op) => {
                     match (&self.op, &op) {
 
-                        (Phrase::Null, lexer::Token::FuncReturn) => { // return statement
+                        (Block::Null, lexer::Token::FuncReturn) => { // return statement
                             // create new expressions for return statement
-                            self.op = Phrase::Operator(op);
+                            self.op = Block::Operator(op);
                             tokens.inc(); // go to next token to parse return expression
                             let mut exp = Expression::new();
                             exp.parse(tokens, Some(lexer::Token::Separator)); // look for RHS
@@ -353,9 +353,9 @@ impl Expression {
                             break; // return out of parse
                         },
 
-                        (Phrase::Null, _) => {
+                        (Block::Null, _) => {
                             print_verbose!("New operator!!! {:?}", op);
-                            self.op = Phrase::Operator(op)
+                            self.op = Block::Operator(op)
                         },
 
                         (_, lexer::Token::Index) => {
@@ -363,16 +363,16 @@ impl Expression {
                                 panic!("Suffix [] without symbol or expression");
                             }
                             self._convert_to_child_elem();
-                            self.op = Phrase::Operator(op);
+                            self.op = Block::Operator(op);
                         },
 
-                        (Phrase::Operator(lexer::Token::FuncCall), lexer::Token::FuncCall) => {
+                        (Block::Operator(lexer::Token::FuncCall), lexer::Token::FuncCall) => {
                             // other cases where self.op is not FuncCall are automatically handled
                             if self.elems.len() == 0 {
                                 panic!("Function call without symbol or expression");
                             }
                             self._convert_to_child_elem();
-                            self.op = Phrase::Operator(op);
+                            self.op = Block::Operator(op);
                         },
 
                         _ => { // fallback sequence
