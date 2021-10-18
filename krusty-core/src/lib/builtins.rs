@@ -111,15 +111,15 @@ pub fn _import_native(ns: &mut NameSpace, args: &Vec<Phrase>) -> Phrase {
 }
 
 
-pub fn _spill(ns: &mut NameSpace, args: &Vec<Obj>) -> Obj {
+pub fn _spill(ns: &mut NameSpace, args: &Vec<Phrase>) -> Phrase {
     func_nargs_eq!(args, 1);
     match &args[0] {
-        Obj::Mod(m) => {
+        Phrase::Mod(m) => {
             ns.module.vars.extend(m.vars.clone());
         },
         _ => ()
     }
-    Obj::Null
+    Phrase::Null
 }
 
 // ================ iter ================
