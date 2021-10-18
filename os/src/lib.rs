@@ -5,25 +5,25 @@ use std::fs;
 use std::env;
 
 use krusty_core::syntax::lexer::Token;
-use krusty_core::syntax::parser::Obj;
+use krusty_core::syntax::parser::Phrase;
 use krusty_core::syntax::evaluator::NameSpace;
 
 use krusty_core::lib::loader;
 
 
-fn _read_dir_to_list(dirpath: &PathBuf) -> Result<Vec<Obj>, std::io::Error> {
+fn _read_dir_to_list(dirpath: &PathBuf) -> Result<Vec<Phrase>, std::io::Error> {
     let dirpath = fs::canonicalize(dirpath).expect("No such File!");
-    let mut v: Vec<Obj> = Vec::new();
+    let mut v: Vec<Phrase> = Vec::new();
     for entry in fs::read_dir(dirpath)? {
         let entry = entry?;
         let path = entry.path();
         let name = path.file_name().unwrap_or(OsStr::new("unknown")).to_str();
-        v.push(Obj::Object(Token::Text(name.unwrap_or("unknown").to_string())))
+        v.push(Phrase::Object(Token::Text(name.unwrap_or("unknown").to_string())))
     }
     Ok(v)
 }
 
-pub fn _listdir(_ns: &mut NameSpace, args: &Vec<Obj>) -> Obj {
+pub fn _listdir(_ns: &mut NameSpace, args: &Vec<Phrase>) -> Phrase {
     if args.len() > 1 {
         panic!("takes 0 or 1 arguments, {} supplied", args.len())
     }
@@ -31,23 +31,23 @@ pub fn _listdir(_ns: &mut NameSpace, args: &Vec<Obj>) -> Obj {
         0 => {
             let cwd = env::current_dir().unwrap_or(PathBuf::from("."));
             match _read_dir_to_list(&cwd) {
-                Ok(v) => Obj::List(v),
+                Ok(v) => Phrase::List(v),
                 Err(e) => panic!(e)
             }
         }
         1 => {
             match &args[0] {
-                Obj::Object(Token::Text(t)) => {
+                Phrase::Object(Token::Text(t)) => {
                     let buf = PathBuf::from_slash(t);
                     match _read_dir_to_list(&buf) {
-                        Ok(v) => Obj::List(v),
+                        Ok(v) => Phrase::List(v),
                         Err(e) => panic!(e)
                     }
                 },
                 _ => panic!("function only takes text")
             }
         },
-        _ => Obj::Null
+        _ => Phrase::Null
     }
 }
 

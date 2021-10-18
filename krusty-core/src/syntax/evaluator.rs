@@ -5,7 +5,7 @@ use path_slash::PathBufExt; // for PatjBuf::from_slash() trait
 #[cfg(debug_assertions)]
 use std::env; // required for print_verbose! macro
 
-use crate::syntax::parser::{Obj, Expression};
+use crate::syntax::parser::{Phrase, Expression};
 use crate::syntax::lexer::Token;
 use crate::lib::{funcdef, builtins};
 
@@ -13,7 +13,7 @@ use crate::lib::{funcdef, builtins};
 
 #[derive(Debug)]
 pub struct NameSpace<'a> {
-    builtin_funcs: Option<HashMap<String, Obj>>,
+    builtin_funcs: Option<HashMap<String, Phrase>>,
     parent: Option<&'a NameSpace<'a>>,
     pub module: funcdef::Module,
 }
@@ -21,7 +21,7 @@ pub struct NameSpace<'a> {
 
 impl<'a> NameSpace<'a> {
     pub fn new(path: Option<&PathBuf>, parent: Option<&'a NameSpace<'a>>) -> NameSpace<'a> {
-        let mut builtin_funcs: Option<HashMap<String, Obj>> = None;
+        let mut builtin_funcs: Option<HashMap<String, Phrase>> = None;
         if let None = parent {
             let mut b = HashMap::new();
             builtins::load(&mut b);
@@ -34,15 +34,15 @@ impl<'a> NameSpace<'a> {
         }
     }
 
-    pub fn to_object(self) -> Obj {
-        Obj::Mod(self.module)
+    pub fn to_object(self) -> Phrase {
+        Phrase::Mod(self.module)
     }
 
-    pub fn run(&mut self, elist: &Vec<Expression>) -> Obj {
-        let mut return_val: Obj = Obj::Null;
+    pub fn run(&mut self, elist: &Vec<Expression>) -> Phrase {
+        let mut return_val: Phrase = Phrase::Null;
         for (_i, o) in elist.iter().enumerate() {
             return_val = self.solve_expr(o);
-            if let Obj::Operator(Token::FuncReturn) = o.op {
+            if let Phrase::Operator(Token::FuncReturn) = o.op {
                 if let None = self.parent {
                     panic!("cannot use return here!")
                 } else {
@@ -54,7 +54,7 @@ impl<'a> NameSpace<'a> {
     }
 
 
-    fn get(&self, key: &String) -> Option<Obj> {
+    fn get(&self, key: &String) -> Option<Phrase> {
         match self.module.vars.get(key) {
             Some(v) => Some(v.clone()),
             None => {
@@ -76,7 +76,7 @@ impl<'a> NameSpace<'a> {
         }
     }
 
-    fn set(&mut self, key: String, value: Obj) {
+    fn set(&mut self, key: String, value: Phrase) {
         self.module.vars.insert(key, value);
     }
 
@@ -106,24 +106,24 @@ impl<'a> NameSpace<'a> {
         }
     }
 
-    pub fn resolve(&mut self, o: &Obj) -> Obj {
+    pub fn resolve(&mut self, o: &Phrase) -> Phrase {
         match o {
-            Obj::Expr(ex) => self.solve_expr(ex),
-            Obj::Object(Token::Symbol(s)) => self.get(s).unwrap(),
-            Obj::List(l) => Obj::List(l.into_iter().map(|x| self.resolve(x)).collect()),
-            Obj::ModBody(m) => {
+            Phrase::Expr(ex) => self.solve_expr(ex),
+            Phrase::Object(Token::Symbol(s)) => self.get(s).unwrap(),
+            Phrase::List(l) => Phrase::List(l.into_iter().map(|x| self.resolve(x)).collect()),
+            Phrase::ModBody(m) => {
                 // resolve ModBody to Mod
                 let mut ns = NameSpace::new(None, Some(self));
                 ns.run(&m);
                 ns.to_object()
             },
-            Obj::FuncBody(_) => Obj::Null, // this should never be called I think
+            Phrase::FuncBody(_) => Phrase::Null, // this should never be called I think
             _ => o.clone()
         }
     }
 
-    fn assign(&mut self, key: &Obj, value: &Obj) {
-        if let Obj::Object(Token::Symbol(var)) = key {
+    fn assign(&mut self, key: &Phrase, value: &Phrase) {
+        if let Phrase::Object(Token::Symbol(var)) = key {
             print_verbose!("assign {:?}", var);
             let val = self.resolve(value);
             self.set(var.to_string(), val);
@@ -133,15 +133,15 @@ impl<'a> NameSpace<'a> {
     }
 
 
-    fn solve_arith(&mut self, op: char, elems: &Vec<Obj>) ->Result<Obj, String> {
+    fn solve_arith(&mut self, op: char, elems: &Vec<Phrase>) ->Result<Phrase, String> {
         let mut res: Option<f64> = None;//f64 = if "+-".contains(op) {0.0} else {1.0};
 
         for e in elems.iter() {
             let num = match self.resolve(e) {
-                Obj::Object(Token::Number(n)) => n,
-                Obj::List(l) if l.len()==1 => { // single element list - expressions enclosed in ()
+                Phrase::Object(Token::Number(n)) => n,
+                Phrase::List(l) if l.len()==1 => { // single element list - expressions enclosed in ()
                     match l[0] {
-                        Obj::Object(Token::Number(n)) => n,
+                        Phrase::Object(Token::Number(n)) => n,
                         _ => return Err(format!("Cannot perform Arith on {:?}", e))
                     }
                 },
@@ -157,39 +157,39 @@ impl<'a> NameSpace<'a> {
                 _ => Some(num)
             };
         }
-        return Ok(Obj::Object(Token::Number(res.expect("Arith error")))) //return
+        return Ok(Phrase::Object(Token::Number(res.expect("Arith error")))) //return
     }
 
 
-    fn solve_comparison(&mut self, op: &String, elems: &Vec<Obj>) ->Result<Obj, String> {
+    fn solve_comparison(&mut self, op: &String, elems: &Vec<Phrase>) ->Result<Phrase, String> {
         // this function uses Rust's PartialEq and PartialOrd to do comparison
-        let vals: Vec<Obj> = elems.iter().map(|x| self.resolve(x)).collect();
+        let vals: Vec<Phrase> = elems.iter().map(|x| self.resolve(x)).collect();
         // println!("{} ", builtins::_type(&vec![vals[0].clone()]) == builtins::_type(&vec![vals[1].clone()]));
         print_verbose!("compare {} {:?}", op, vals);
         match &op[..] {
-            "==" => Ok(Obj::Bool(vals[0]==vals[1])),
-            "!=" => Ok(Obj::Bool(vals[0]!=vals[1])),
-            ">" => Ok(Obj::Bool(vals[0]>vals[1])),
-            "<" => Ok(Obj::Bool(vals[0]<vals[1])),
-            ">=" => Ok(Obj::Bool(vals[0]>=vals[1])),
-            "<=" => Ok(Obj::Bool(vals[0]<=vals[1])),
+            "==" => Ok(Phrase::Bool(vals[0]==vals[1])),
+            "!=" => Ok(Phrase::Bool(vals[0]!=vals[1])),
+            ">" => Ok(Phrase::Bool(vals[0]>vals[1])),
+            "<" => Ok(Phrase::Bool(vals[0]<vals[1])),
+            ">=" => Ok(Phrase::Bool(vals[0]>=vals[1])),
+            "<=" => Ok(Phrase::Bool(vals[0]<=vals[1])),
             _ => Err("Unsupported operator".to_string())
         }
     }
 
-    pub fn eval_func_obj(&mut self, func: &Obj, args: &Obj, name: Option<&String>) -> Obj {
+    pub fn eval_func_obj(&mut self, func: &Phrase, args: &Phrase, name: Option<&String>) -> Phrase {
         let name = match name {
             Some(s) => s,
             None => "anonymous"
         };
 
-        let args: Vec<Obj> = match args {
-            Obj::List(l) => l.to_vec(),
+        let args: Vec<Phrase> = match args {
+            Phrase::List(l) => l.to_vec(),
             _ => vec![args.clone()]
         };
 
         match func {
-            Obj::Func(f) => {
+            Phrase::Func(f) => {
                 let req_args = f.args.get_list().expect("function definition error");
                 if req_args.len() != args.len() {
                     panic!("function arguments for '{}' don't match", name);
@@ -200,20 +200,20 @@ impl<'a> NameSpace<'a> {
                     }
                     print_verbose!("CALL {} {:?}", name, f.body);
                     match &f.body { // return function result
-                        Obj::FuncBody(elist) => exec_env.run(&elist),
+                        Phrase::FuncBody(elist) => exec_env.run(&elist),
                         _ => panic!("function '{}' definition error", name),
                     }
                 }
             },
-            Obj::NativeFunc(f) => {
-                let clean_args: Vec<Obj> = args.iter().map(|x| self.resolve(x)).collect();
+            Phrase::NativeFunc(f) => {
+                let clean_args: Vec<Phrase> = args.iter().map(|x| self.resolve(x)).collect();
                 (f.func)(self, &clean_args)
             }
             _ => panic!("function '{}' definition error", name)
         }
     }
 
-    fn eval_func(&mut self, name: &String, args: &Obj) -> Obj {
+    fn eval_func(&mut self, name: &String, args: &Phrase) -> Phrase {
         // println!("<F> {:?}", args);
         match self.get(name) {
             None => panic!("function '{}' not defined"),
@@ -223,28 +223,28 @@ impl<'a> NameSpace<'a> {
         }
     }
 
-    fn pick_index(&self, idx: &Obj, things: &Obj) -> Obj {
+    fn pick_index(&self, idx: &Phrase, things: &Phrase) -> Phrase {
         // println!("{:?} [{:?}]", things, idx);
         match (idx, things) {
-            (Obj::Object(Token::Number(n)), Obj::List(a)) => a[*n as usize].clone(),
-            (Obj::Object(Token::Number(n)), Obj::Object(Token::Text(a))) => Obj::Object(Token::Text(a.chars().nth(*n as usize).unwrap().to_string())),
+            (Phrase::Object(Token::Number(n)), Phrase::List(a)) => a[*n as usize].clone(),
+            (Phrase::Object(Token::Number(n)), Phrase::Object(Token::Text(a))) => Phrase::Object(Token::Text(a.chars().nth(*n as usize).unwrap().to_string())),
             _ => panic!("cannot index {:?} with {:?}", things, idx)
         }
-        // Obj::Null
+        // Phrase::Null
     }
 
-    fn solve_expr(&mut self, exp: &Expression) -> Obj {
+    fn solve_expr(&mut self, exp: &Expression) -> Phrase {
         // println!("<E> {:?}", exp);
         match &exp.op {
-            Obj::Operator(Token::Assign) => {
+            Phrase::Operator(Token::Assign) => {
                 // elems should have only 2 members
                 if exp.elems.len() != 2 {
                     panic!("Illegal assignment");
                 }
                 self.assign(&exp.elems[0], &exp.elems[1]);
-                Obj::Null
+                Phrase::Null
             },
-            Obj::Operator(Token::Arith(op)) => {
+            Phrase::Operator(Token::Arith(op)) => {
                 // elems should have only 2 members
                 if exp.elems.len() != 2 {
                     panic!("Illegal arithmetic operation");
@@ -254,7 +254,7 @@ impl<'a> NameSpace<'a> {
                     Err(e) => panic!("{}", e)
                 } // return
             },
-            Obj::Operator(Token::Comparison(op)) => {
+            Phrase::Operator(Token::Comparison(op)) => {
                 // elems should have only 2 members
                 if exp.elems.len() != 2 {
                     panic!("Illegal comparison operation");
@@ -264,38 +264,38 @@ impl<'a> NameSpace<'a> {
                     Err(e) => panic!("{}", e)
                 } // return
             },
-            Obj::Operator(Token::FuncCall) => {
+            Phrase::Operator(Token::FuncCall) => {
                 match &exp.elems[0] {
-                    Obj::Object(Token::Symbol(func_name)) => self.eval_func(func_name, &exp.elems[1]),
-                    Obj::Func(_) => self.eval_func_obj(&exp.elems[0], &exp.elems[1], None),
-                    Obj::Expr(ex) => {
+                    Phrase::Object(Token::Symbol(func_name)) => self.eval_func(func_name, &exp.elems[1]),
+                    Phrase::Func(_) => self.eval_func_obj(&exp.elems[0], &exp.elems[1], None),
+                    Phrase::Expr(ex) => {
                         let func = self.solve_expr(&ex);
                         self.eval_func_obj(&func, &exp.elems[1], None)
                     },
-                    _ => Obj::Null,
+                    _ => Phrase::Null,
                 }
             },
-            Obj::Operator(Token::FuncReturn) => { // will only return a list type object??
-                let ret_list: Vec<Obj> = exp.elems.iter().map(|e| self.resolve(e)).collect();
+            Phrase::Operator(Token::FuncReturn) => { // will only return a list type object??
+                let ret_list: Vec<Phrase> = exp.elems.iter().map(|e| self.resolve(e)).collect();
                 match ret_list.len() {
                     // We also unwrap these late evaluated lists in case it has 0 or 1 elements
-                    0 => Obj::Null,
+                    0 => Phrase::Null,
                     1 => ret_list[0].clone(),
-                    _ => Obj::List(ret_list)
+                    _ => Phrase::List(ret_list)
                 }
             },
-            Obj::Operator(Token::List) => {
-                // These are some List type Expressions still unconverted to Obj::List
+            Phrase::Operator(Token::List) => {
+                // These are some List type Expressions still unconverted to Phrase::List
                 // They are usually deep inside a function definition needing late evaluation
-                let ret_list: Vec<Obj> = exp.elems.iter().map(|e| self.resolve(e)).collect();
+                let ret_list: Vec<Phrase> = exp.elems.iter().map(|e| self.resolve(e)).collect();
                 match ret_list.len() {
                     // We also unwrap these late evaluated lists in case it has 0 or 1 elements
-                    0 => Obj::Null,
+                    0 => Phrase::Null,
                     1 => ret_list[0].clone(),
-                    _ => Obj::List(ret_list)
+                    _ => Phrase::List(ret_list)
                 }
             },
-            Obj::Operator(Token::Index) => {
+            Phrase::Operator(Token::Index) => {
                 if exp.elems.len() != 2 {
                     panic!("Illegal index operation");
                 }
@@ -303,17 +303,17 @@ impl<'a> NameSpace<'a> {
                 let idx = self.resolve(&exp.elems[1]);
                 self.pick_index(&idx, &val)
             },
-            Obj::Operator(Token::Accessor) => {
+            Phrase::Operator(Token::Accessor) => {
                 if exp.elems.len() != 2 {
                     panic!("Illegal access operation");
                 }
                 match self.resolve(&exp.elems[0]) {
-                    Obj::Mod(m) => {
+                    Phrase::Mod(m) => {
                         match &exp.elems[1] {
-                            Obj::Object(Token::Symbol(s)) => m.vars.get(s).expect("member not found").clone(),
-                            Obj::Expr(x) => {
+                            Phrase::Object(Token::Symbol(s)) => m.vars.get(s).expect("member not found").clone(),
+                            Phrase::Expr(x) => {
                                 match x.op {
-                                    Obj::Operator(Token::Assign) => panic!("cannot assign into module"),
+                                    Phrase::Operator(Token::Assign) => panic!("cannot assign into module"),
                                     _ => {
                                         let mut ns = NameSpace { // create new execution namespace
                                             builtin_funcs: None,

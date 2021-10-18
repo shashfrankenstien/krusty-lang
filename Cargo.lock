@@ -98,7 +98,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "krust"
+name = "krusty"
 version = "0.2.0"
 dependencies = [
  "krusty-core",

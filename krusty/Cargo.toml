@@ -1,5 +1,5 @@
 [package]
-name = "krust"
+name = "krusty"
 version = "0.2.0"
 authors = ["Shashank Gopikrishna <shashank.gopikrishna@gmail.com>"]
 edition = "2018"

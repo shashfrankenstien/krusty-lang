@@ -9,6 +9,8 @@ use std::fs;
 use std::path::PathBuf;
 use std::fmt;
 
+use super::lexer_tweaks;
+
 
 lazy_static! {
     static ref RE: RegexSet = RegexSet::new(&[
@@ -28,7 +30,7 @@ lazy_static! {
     ]).unwrap();
 
     static ref RE_PASS: RegexSet = RegexSet::new(&[
-        // continue parsing token if the following are encontered
+        // continue parsing token if the following are encountered
         r#"^('[^']*|"[^"]*)$"#, //start of string
     ]).unwrap();
 }
@@ -83,7 +85,7 @@ impl Token {
                 1 if txt == "." => Some(Token::Accessor), // hacky workaround due to lack of regex lookaround
                 1 => Some(Token::Number(txt.parse().expect("This is not a number"))),
 
-                2 => Some(Token::Text(txt[1..txt.len()-1].to_string())),
+                2 => Some(Token::Text(txt[1..txt.len()-1].to_string())), // excluding quotes
                 3 => Some(Token::Arith(txt.chars().nth(0).unwrap())),
                 5 => Some(Token::ScopeStart(txt.chars().nth(0).unwrap())),
                 6 => Some(Token::ScopeEnd(txt.chars().nth(0).unwrap())),
@@ -125,18 +127,19 @@ impl Token {
 
 
 #[derive(Debug)]
-pub struct Scanner {
+pub struct TokenStream {
     tokens: Vec<Token>,
     _pointer: usize,
 }
 
-impl Scanner {
-    pub fn from_tokens(tokens: Vec<Token>) -> Scanner {
-        Scanner {
-            tokens,
+impl TokenStream {
+    pub fn new() -> TokenStream {
+        TokenStream {
+            tokens: Vec::new(),
             _pointer:0,
         }
     }
+
     fn _valid_index(&self, i: usize) -> bool {
         i < self.tokens.len()
     }
@@ -189,46 +192,23 @@ impl Scanner {
 }
 
 
-fn push_tweaked(tkn: Token, dest: &mut Vec<Token>) {
-    match &tkn {
-        Token::ScopeStart('(') => {
-            // if let Token::Symbol(_)  = dest[dest.len()-1] { // symbol + scope start = func call
-            if dest.len() > 0 {
-                if let Token::Symbol(_) | Token::ScopeEnd(_) = dest[dest.len()-1] { // symbol + scope start = func call
-                    dest.push(Token::FuncCall);
-                }
-            }
-            dest.push(tkn);
-        },
-        Token::ScopeStart('[') => {
-            dest.push(Token::Index);
-            dest.push(tkn);
-        },
-        Token::Symbol(s) if s == "ret" => {
-            dest.push(Token::FuncReturn);
-            return
-        },
-        _ => dest.push(tkn)
-    };
-}
-
 fn trim_spaces(w: &String) -> &str {
     w.trim_matches(&[' ', '\t'] as &[_])
 }
 
-pub fn lex(code: &String) -> Scanner {
+pub fn lex(code: &String) -> TokenStream {
 
     let mut word = String::new();
-    let mut out: Vec<Token> = Vec::new();
+    let mut out: TokenStream = TokenStream::new();
     for c in code.chars() {
         word.push(c);
-        if trim_spaces(&word).len()>1 && !RE.is_match(trim_spaces(&word)) {
+        if trim_spaces(&word).len()>1 && !RE.is_match(trim_spaces(&word)) { // if it matches, continue till it doesn't match
             word.pop();
             // println!("{} {}", word, RE.is_match(&word));
             match Token::create(trim_spaces(&word)) {
                 Some(t) => {
                     print_verbose!("{:?}", t);
-                    push_tweaked(t, &mut out);
+                    lexer_tweaks::push_tweaked(t, &mut out.tokens);
                     word.clear();
                 },
                 _ => ()
@@ -238,16 +218,16 @@ pub fn lex(code: &String) -> Scanner {
     }
     if word.len() != 0 { // check remainder
         match Token::create(trim_spaces(&word)) {
-            Some(t) => push_tweaked(t, &mut out),
+            Some(t) => lexer_tweaks::push_tweaked(t, &mut out.tokens),
             _ => ()
         }
     }
     print_verbose!("\\mm/      lex done!!!");
-    Scanner::from_tokens(out)
+    return out;
 }
 
 
-pub fn lex_file(filepath: &PathBuf) -> Scanner {
+pub fn lex_file(filepath: &PathBuf) -> TokenStream {
     let filepath = fs::canonicalize(filepath).expect("No such File!");
     let mut f = fs::File::open(filepath).expect("Oh, no such file!");
     let mut code = String::new();

@@ -5,17 +5,17 @@ use std::fs;
 use libloading;
 
 use crate::syntax::evaluator::NameSpace;
-use crate::syntax::parser::Obj;
+use crate::syntax::parser::Phrase;
 use crate::lib::loader;
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct FuncDef {
-    pub args: Obj,
-    pub body: Obj
+    pub args: Phrase,
+    pub body: Phrase
 }
 
 
-pub type NativeFuncType = fn(&mut NameSpace, args: &Vec<Obj>) -> Obj;
+pub type NativeFuncType = fn(&mut NameSpace, args: &Vec<Phrase>) -> Phrase;
 
 #[derive(Clone)]
 pub struct NativeFuncDef {
@@ -58,7 +58,7 @@ impl PartialOrd for NativeFuncDef {
 
 #[derive(Debug)]
 pub struct Module {
-    pub vars: HashMap<String, Obj>,
+    pub vars: HashMap<String, Phrase>,
     pub path: Option<PathBuf>,
     dylib: Option<libloading::Library>
 }

@@ -3,6 +3,6 @@
 members = [
     "krusty-core",
     "krusty-repl",
-    "krust",
+    "krusty",
     "os"
 ]

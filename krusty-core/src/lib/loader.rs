@@ -8,15 +8,15 @@
 */
 
 use crate::lib::funcdef;
-use crate::syntax::parser::Obj;
+use crate::syntax::parser::Phrase;
 
 use std::collections::HashMap;
 
-pub type ModuleVars = HashMap<String, Obj>;
+pub type ModuleVars = HashMap<String, Phrase>;
 pub type DynLoadSignature = fn(&mut ModuleVars);
 
 pub fn load_func(hm: &mut ModuleVars, name: &str, f: funcdef::NativeFuncType) {
-    hm.insert(name.to_string(), Obj::NativeFunc(
+    hm.insert(name.to_string(), Phrase::NativeFunc(
         funcdef::NativeFuncDef::new(f, name)
     ));
 }

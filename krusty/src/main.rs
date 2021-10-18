@@ -31,7 +31,7 @@ fn repl_prompt() {
                     let parsed = parser::parse(&mut tokens);
                     let out = ns.run(&parsed);
                     match out {
-                        parser::Obj::Null => (),
+                        parser::Phrase::Null => (),
                         _ => println!("{}", ns.resolve(&out))
                     }
                 }));
