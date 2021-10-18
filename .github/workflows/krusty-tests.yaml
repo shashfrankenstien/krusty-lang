@@ -15,4 +15,4 @@ jobs:
         with:
           toolchain: stable
       # - run: cargo build --release --all-features
-      - run: cargo run test_code/*.kry
+      - run: cargo run test_code/*.krt

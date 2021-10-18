@@ -1,0 +1,64 @@
+# print = (a)=>{1};
+
+x = (100 * 5) + 10;
+print(x );
+
+g = (20); # not a list
+
+#a = 1;
+a = g;
+
+y = (1,2);
+
+f = (a,b,x) => {
+    print(a);
+    print(b, x);
+    k = (i)=>{print(i);};
+    ret k;
+};
+
+print(1 / 2);
+print(()=>{});
+
+name = "shashank";
+
+mane = '1,2,3,4';
+face = mane;
+
+m = f(1, 2, 3);
+m(1000);
+
+k = ()=>{print(x);};
+print(k());
+mane2 = (1,2,3,k);
+mane3 = (1 2 3 4);
+
+
+f(1, 2, 3);
+
+# k = (a) => {(a + (2 * 10) + (10 - 2)), 45;};
+# k(10);
+# ()=>print(x);
+
+# Hello();
+p = (a,); # convert to list
+print(p[0]);
+
+
+add2 = (x) => {ret x + 2;};
+
+print( "add2", add2(5) );
+
+comp = 7.15 >= add2(5);
+print(comp);
+
+
+print("call func without assignment");
+a = true;
+(x)=>{print(x);}(a); # call func without assignment
+
+
+a = true;
+if(a==true, print, (x)=>{
+    print(type(x));
+})(a);

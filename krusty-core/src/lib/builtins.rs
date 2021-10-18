@@ -78,8 +78,8 @@ pub fn _import(ns: &mut NameSpace, args: &Vec<Phrase>) -> Phrase {
     match &args[0] {
         Phrase::Object(Token::Text(p)) => {
             let mut p = ns.get_relative_path(p);
-            if !p.ends_with("kry") {
-                p.set_extension("kry");
+            if !p.ends_with("krt") {
+                p.set_extension("krt");
             }
             print_verbose!("import({:?})", p);
             let mut tokens = lexer::lex_file(&p);

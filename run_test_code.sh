@@ -1,4 +1,4 @@
-for f in ./test_code/*.kry; do
+for f in ./test_code/*.krt; do
     # do some stuff here with "$f"
     # remember to quote it or spaces may misbehave
     echo "\n+++++++++++++++++++++++++++++++++++++++++"
