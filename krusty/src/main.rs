@@ -16,7 +16,12 @@ const VERSION_STR: &'static str = env!("CARGO_PKG_VERSION");
 
 
 fn repl_prompt() {
-    println!("{} {} {} {}", GREEN!("Welcome to Krusty"), GREEN!(VERSION_STR), "\u{1F980}", GREEN!("repl. Ctrl+C to exit!"));
+    println!(
+        "{} {} {} {}",
+        GREEN!("Welcome to Krusty"),
+        GREEN!(VERSION_STR), "\u{1F980}",
+        GREEN!("repl. Ctrl+C or exit() to quit!")
+    );
     let cwd = env::current_dir().unwrap_or(PathBuf::from("."));
     let mut ns = evaluator::NameSpace::new(Some(&cwd), None);
 

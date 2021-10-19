@@ -176,6 +176,14 @@ fn _vars(ns: &mut NameSpace, args: &Vec<Block>) -> Block {
 }
 
 
+// ================ process =======================
+
+fn _exit(_ns: &mut NameSpace, args: &Vec<Block>) -> Block {
+    func_nargs_eq!(args, 0);
+    std::process::exit(0);
+}
+
+
 // ================ namespace helper functions ====================
 
 
@@ -194,4 +202,6 @@ pub fn load_all(env_native: &mut HashMap<String, Block>) {
     helper::load_func(env_native, "import", _import);
     helper::load_func(env_native, "import_native", _import_native);
     helper::load_func(env_native, "spill", _spill);
+
+    helper::load_func(env_native, "exit", _exit);
 }
