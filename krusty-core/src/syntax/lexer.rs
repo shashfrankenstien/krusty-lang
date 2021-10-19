@@ -154,7 +154,7 @@ impl TokenStream {
         self._pointer
     }
 
-    pub fn get_token_at(&self, i: usize) -> Option<&Token> {
+    pub fn get_current_at(&self, i: usize) -> Option<&Token> {
         if self._valid_index(i) {
             Some(&self.tokens[i])
         } else {
@@ -162,33 +162,58 @@ impl TokenStream {
         }
     }
 
-    pub fn get_token(&self) -> Option<&Token> {
-        self.get_token_at(self._pointer)
+    pub fn get_current(&self) -> Option<&Token> {
+        self.get_current_at(self._pointer)
     }
 
     pub fn get_next(&self) -> Option<&Token> {
-        self.get_token_at(self._pointer + 1)
+        self.get_current_at(self._pointer + 1)
     }
-    // fn get_prev(&self) -> Option<&Token> {
-    //     self.get_token_at(self._pointer - 1)
-    // }
 
-    pub fn current_is(&self, other: &Option<Token>) -> bool {
-        let tkn = self.get_token();
+    pub fn get_prev(&self) -> Option<&Token> {
+        self.get_current_at(self._pointer - 1)
+    }
+
+    fn is(tkn: Option<&Token>, other: &Option<Token>) -> bool {
         match other {
             Some(t) => Some(t)==tkn,
             None => tkn.is_none()
         }
+    }
+
+    fn is_in(tkn: Option<&Token>, others: &Option<&[Token]>) -> bool {
+        others.unwrap_or(&[]).iter().any(|x| Some(x)==tkn)
+    }
+
+    pub fn current_is(&self, other: &Option<Token>) -> bool {
+        let tkn = self.get_current();
+        TokenStream::is(tkn, other)
     }
 
     pub fn next_is(&self, other: &Option<Token>) -> bool {
         let tkn = self.get_next();
-        match other {
-            Some(t) => Some(t)==tkn,
-            None => tkn.is_none()
-        }
+        TokenStream::is(tkn, other)
     }
 
+    pub fn prev_is(&self, other: &Option<Token>) -> bool {
+        let tkn = self.get_prev();
+        TokenStream::is(tkn, other)
+    }
+
+    pub fn current_is_in(&self, others: &Option<&[Token]>) -> bool {
+        let tkn = self.get_current();
+        TokenStream::is_in(tkn, others)
+    }
+
+    pub fn next_is_in(&self, others: &Option<&[Token]>) -> bool {
+        let tkn = self.get_next();
+        TokenStream::is_in(tkn, others)
+    }
+
+    pub fn prev_is_in(&self, others: &Option<&[Token]>) -> bool {
+        let tkn = self.get_prev();
+        TokenStream::is_in(tkn, others)
+    }
 }
 
 
