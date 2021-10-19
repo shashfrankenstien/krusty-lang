@@ -163,7 +163,7 @@ impl Expression {
             print_verbose!("\nParsing Expression");
             print_verbose!("---    -----     ----  {:?} {:?}", tokens.get_current(), Some(end_tokens.as_slice()));
             exp.parse(tokens, Some(end_tokens.as_slice()));
-            print_verbose!("---    -----     ----  {:?}\n", tokens.get_current());
+            print_verbose!("---    -----     ----  {:?} {:?}", tokens.get_current(), Some(end_tokens.as_slice()));
             print_verbose!("* {:?} {:?}", exp, tokens.get_current());
             if exp.elems.len()>0 {
                 output.push(exp);
@@ -356,7 +356,8 @@ impl Expression {
                             self.op = Block::Operator(op);
                             tokens.inc(); // go to next token to parse return expression
                             let mut exp = Expression::new();
-                            exp.parse(tokens, Some(&[lexer::Token::Separator])); // look for RHS
+                            exp.parse(tokens, end); // look for RHS
+                            // exp.parse(tokens, Some(&[lexer::Token::Separator])); // look for RHS
                             // flatten values of return statement
                             if exp.elems.len() == 1 {
                                 self.elems.push(exp.elems[0].clone());
