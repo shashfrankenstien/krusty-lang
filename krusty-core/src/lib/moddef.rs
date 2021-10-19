@@ -49,8 +49,8 @@ impl Module {
 
     fn _load_dylib_funcs(&mut self, lib: &libloading::Library) {
         unsafe {
-            let load_func: libloading::Symbol<DynLoadSignature> = lib.get(b"load").expect("library load error2");
-            load_func(&mut self.vars);
+            let load_all: libloading::Symbol<DynLoadSignature> = lib.get(b"load_all").expect("library load error2");
+            load_all(&mut self.vars);
         }
     }
 

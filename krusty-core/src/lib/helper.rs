@@ -1,9 +1,9 @@
 /** this file contains helper functions used while defining an external dylib module
-* external modules should expose a function `load` with signature defined by `DynLoadSignature`
-* the `load` function can internally use `helper::load_func` to provide function pointers
+* external modules should expose a function `load_all` with signature defined by `DynLoadSignature`
+* the `load_all` function can internally use `helper::load_func` to provide function pointers
 *
 * [#no_mangle]
-* pub fn load(&mut helper::ModuleVars);
+* pub fn load_all(&mut helper::ModuleVars);
 *
 */
 

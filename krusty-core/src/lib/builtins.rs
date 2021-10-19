@@ -12,7 +12,7 @@ use crate::lib::helper;
 // ================ print =======================
 
 
-pub fn _print(_: &mut NameSpace, args: &Vec<Block>) -> Block {
+fn _print(_: &mut NameSpace, args: &Vec<Block>) -> Block {
     match args.len() {
         0 => println!(""),
         _ => {
@@ -36,7 +36,7 @@ pub fn _print(_: &mut NameSpace, args: &Vec<Block>) -> Block {
 }
 
 
-pub fn _type(_: &mut NameSpace, args: &Vec<Block>) -> Block {
+fn _type(_: &mut NameSpace, args: &Vec<Block>) -> Block {
     func_nargs_eq!(args, 1);
     match args[0] {
         Block::Object(Token::Text(_)) => Block::Object(Token::Text("<Text>".to_string())),
@@ -55,7 +55,7 @@ pub fn _type(_: &mut NameSpace, args: &Vec<Block>) -> Block {
 
 // ================ if =======================
 
-pub fn _if(_: &mut NameSpace, args: &Vec<Block>) -> Block {
+fn _if(_: &mut NameSpace, args: &Vec<Block>) -> Block {
     func_nargs_eq!(args, 3);
     let condition = match &args[0] {
         Block::List(l) => l[0].get_bool().unwrap(),
@@ -70,7 +70,7 @@ pub fn _if(_: &mut NameSpace, args: &Vec<Block>) -> Block {
 
 // ================ import ================
 
-pub fn _import(ns: &mut NameSpace, args: &Vec<Block>) -> Block {
+fn _import(ns: &mut NameSpace, args: &Vec<Block>) -> Block {
     func_nargs_eq!(args, 1);
     match &args[0] {
         Block::Object(Token::Text(p)) => {
@@ -92,7 +92,7 @@ pub fn _import(ns: &mut NameSpace, args: &Vec<Block>) -> Block {
 
 
 
-pub fn _import_native(ns: &mut NameSpace, args: &Vec<Block>) -> Block {
+fn _import_native(ns: &mut NameSpace, args: &Vec<Block>) -> Block {
     func_nargs_eq!(args, 1);
     match &args[0] {
         Block::Object(Token::Text(p)) => {
@@ -111,7 +111,7 @@ pub fn _import_native(ns: &mut NameSpace, args: &Vec<Block>) -> Block {
 }
 
 
-pub fn _spill(ns: &mut NameSpace, args: &Vec<Block>) -> Block {
+fn _spill(ns: &mut NameSpace, args: &Vec<Block>) -> Block {
     func_nargs_eq!(args, 1);
     match &args[0] {
         Block::Mod(m) => {
@@ -124,7 +124,7 @@ pub fn _spill(ns: &mut NameSpace, args: &Vec<Block>) -> Block {
 
 // ================ iter ================
 
-pub fn _len(_: &mut NameSpace, args: &Vec<Block>) -> Block {
+fn _len(_: &mut NameSpace, args: &Vec<Block>) -> Block {
     func_nargs_eq!(args, 1);
     let length = match &args[0] {
         Block::List(l) => l.len(),
@@ -134,7 +134,7 @@ pub fn _len(_: &mut NameSpace, args: &Vec<Block>) -> Block {
     Block::Object(Token::Number(length as f64))
 }
 
-pub fn _foreach(ns: &mut NameSpace, args: &Vec<Block>) -> Block {
+fn _foreach(ns: &mut NameSpace, args: &Vec<Block>) -> Block {
     func_nargs_eq!(args, 2);
     if let Block::Func(_) | Block::NativeFunc(_) = &args[1] {
         let res: Vec<Block>;
@@ -156,7 +156,7 @@ pub fn _foreach(ns: &mut NameSpace, args: &Vec<Block>) -> Block {
 
 // ================ module inspect ================
 
-pub fn _vars(ns: &mut NameSpace, args: &Vec<Block>) -> Block {
+fn _vars(ns: &mut NameSpace, args: &Vec<Block>) -> Block {
     func_nargs_le!(args, 1); // 0 or 1 args
     let mut vars: Vec<Block> = Vec::new();
     if args.len() == 0 {
@@ -179,7 +179,7 @@ pub fn _vars(ns: &mut NameSpace, args: &Vec<Block>) -> Block {
 // ================ namespace helper functions ====================
 
 
-pub fn load(env_native: &mut HashMap<String, Block>) {
+pub fn load_all(env_native: &mut HashMap<String, Block>) {
     env_native.insert("null".to_string(), Block::Null);
     env_native.insert("true".to_string(), Block::Bool(true));
     env_native.insert("false".to_string(), Block::Bool(false));

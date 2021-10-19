@@ -51,7 +51,7 @@ pub fn _listdir(_ns: &mut NameSpace, args: &Vec<Block>) -> Block {
 }
 
 #[no_mangle]
-pub fn load(m_vars: &mut moddef::ModuleVars) {
+pub fn load_all(m_vars: &mut moddef::ModuleVars) {
     helper::load_func(m_vars, "listdir", _listdir);
 }
 

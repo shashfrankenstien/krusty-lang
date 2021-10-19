@@ -24,7 +24,7 @@ impl<'a> NameSpace<'a> {
         let mut builtin_funcs: Option<HashMap<String, Block>> = None;
         if let None = parent {
             let mut b = HashMap::new();
-            builtins::load(&mut b);
+            builtins::load_all(&mut b);
             builtin_funcs = Some(b);
         }
         NameSpace {
