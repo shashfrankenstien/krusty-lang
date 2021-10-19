@@ -31,7 +31,7 @@ pub fn _listdir(_ns: &mut NameSpace, args: &Vec<Block>) -> Block {
             let cwd = env::current_dir().unwrap_or(PathBuf::from("."));
             match _read_dir_to_list(&cwd) {
                 Ok(v) => Block::List(v),
-                Err(e) => panic!(e)
+                Err(e) => panic!("{}", e)
             }
         }
         1 => {
@@ -40,7 +40,7 @@ pub fn _listdir(_ns: &mut NameSpace, args: &Vec<Block>) -> Block {
                     let buf = PathBuf::from_slash(t);
                     match _read_dir_to_list(&buf) {
                         Ok(v) => Block::List(v),
-                        Err(e) => panic!(e)
+                        Err(e) => panic!("{}", e)
                     }
                 },
                 _ => panic!("function only takes text")

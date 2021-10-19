@@ -225,7 +225,7 @@ impl<'a> NameSpace<'a> {
     fn eval_func(&mut self, name: &String, args: &Block) -> Block {
         // println!("<F> {:?}", args);
         match self.get(name) {
-            None => panic!("function '{}' not defined"),
+            None => panic!("function '{}' not defined", name),
             Some(func) => {
                 self.eval_func_obj(&func, args, Some(name))
             },
