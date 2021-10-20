@@ -184,6 +184,20 @@ fn _exit(_ns: &mut NameSpace, args: &Vec<Block>) -> Block {
 }
 
 
+fn _assert(_ns: &mut NameSpace, args: &Vec<Block>) -> Block {
+    func_nargs_eq!(args, 1);
+    let res = match &args[0] {
+        Block::Bool(b) => *b==true,
+        _ => panic!("assert argument not supported")
+    };
+    if res!=true {
+        panic!("Assertion error");
+    }
+    args[0].clone()
+}
+
+
+
 // ================ namespace helper functions ====================
 
 
@@ -203,5 +217,6 @@ pub fn load_all(env_native: &mut HashMap<String, Block>) {
     helper::load_func(env_native, "import_native", _import_native);
     helper::load_func(env_native, "spill", _spill);
 
+    helper::load_func(env_native, "assert", _assert);
     helper::load_func(env_native, "exit", _exit);
 }

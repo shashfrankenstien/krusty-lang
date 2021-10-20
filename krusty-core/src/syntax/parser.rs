@@ -392,6 +392,7 @@ impl Expression {
 
                         _ => { // fallback sequence
                             let mut exp = Expression::new();
+                            print_verbose!("-----------+ 1111 {:?} {:?}", self.op, op);
                             if self.elems.len() > 0 {
                                 exp.elems.push(self.elems.pop().unwrap()); // setup LHS
                             }
