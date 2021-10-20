@@ -34,7 +34,7 @@ impl<'a> NameSpace<'a> {
         }
     }
 
-    pub fn to_object(self) -> Block {
+    pub fn to_block(self) -> Block {
         Block::Mod(self.module)
     }
 
@@ -124,7 +124,7 @@ impl<'a> NameSpace<'a> {
                 // resolve ModBody to Mod
                 let mut ns = NameSpace::new(None, Some(self));
                 ns.run(&m);
-                ns.to_object()
+                ns.to_block()
             },
             Block::FuncBody(_) => Block::Null, // this should never be called I think
             _ => o.clone()
@@ -339,7 +339,7 @@ impl<'a> NameSpace<'a> {
                     _ => panic!("invalid use of '.' accessor")
                 }
             }
-            _ => exp.clone().to_object()
+            _ => exp.clone().to_block()
         }
     }
 }

@@ -110,7 +110,7 @@ impl Expression {
         }
     }
 
-    pub fn to_object(mut self) -> Block {
+    pub fn to_block(mut self) -> Block {
         if self.op == Block::Null && self.elems.len() == 1 {
             self.elems.pop().unwrap()
         } else
@@ -219,7 +219,7 @@ impl Expression {
             elems: self.elems.clone(),
         };
         self.elems.clear();
-        self.elems.push(exp.to_object());
+        self.elems.push(exp.to_block());
     }
 
     fn parse(&mut self, tokens: &mut lexer::TokenStream, end: Option<&[lexer::Token]>) {
@@ -264,7 +264,7 @@ impl Expression {
                             if let Block::Operator(lexer::Token::Index) = self.op {
                                 let mut ex = Expression::new();
                                 ex.parse(tokens, Some(&[lexer::Token::ScopeEnd(']')]));
-                                ex.to_object()
+                                ex.to_block()
                             } else {
                                 panic!("Illegal use of [] operator");
                             }
@@ -286,13 +286,13 @@ impl Expression {
                                     let mut ex = Expression::new();
                                     ex.parse(tokens, Some(&[lexer::Token::List]));
                                     if ex.elems.len() > 0 {
-                                        ex_list.elems.push(ex.to_object());
+                                        ex_list.elems.push(ex.to_block());
                                     }
                                 }
                                 let mut ex = Expression::new();
                                 ex.parse(tokens, Some(&[lexer::Token::ScopeEnd(')')]));
                                 if ex.elems.len() > 0 {
-                                    ex_list.elems.push(ex.to_object());
+                                    ex_list.elems.push(ex.to_block());
                                 }
                             }
 
@@ -301,7 +301,7 @@ impl Expression {
                                 tokens.inc();
                             }
                             print_verbose!("<<< SCOPETEST() {:?} {:?}", tokens.get_current(), ex_list);
-                            ex_list.to_object()
+                            ex_list.to_block()
                         },
                         _ => panic!("Illegal scope start char")
                     };
@@ -326,14 +326,14 @@ impl Expression {
                                         _ => {
                                             let mut body_exp = Expression::new();
                                             body_exp.parse(tokens, Some(&[lexer::Token::Separator]));
-                                            exp.elems.push(body_exp.to_object());
+                                            exp.elems.push(Block::FuncBody(vec![body_exp]));
                                             // panic!("Single statements funcs not supported yet")
                                         }
                                     }
                                 }
                             }
                             match exp.elems[1] {
-                                Block::FuncBody(_) | Block::Expr(_) => self.elems.push(exp.to_object()),
+                                Block::FuncBody(_) | Block::Expr(_) => self.elems.push(exp.to_block()),
                                 _ => panic!("Invalid function definition {:?}", exp) // func body should be FuncBody or Expr
                             };
                             // break; // function definition complete
@@ -362,7 +362,7 @@ impl Expression {
                             if exp.elems.len() == 1 {
                                 self.elems.push(exp.elems[0].clone());
                             } else if exp.elems.len() > 1 {
-                                self.elems.push(exp.to_object());
+                                self.elems.push(exp.to_block());
                             }
                             // println!(">> {:?}", self);
                             break; // return out of parse
@@ -397,7 +397,7 @@ impl Expression {
                             }
                             exp.parse(tokens, end); // look till end token reached
                             if exp.elems.len()!=0 {
-                                self.elems.push(exp.to_object());
+                                self.elems.push(exp.to_block());
                             }
                             print_verbose!("-----------+ 2222 {:?} {:?}", tokens.get_current(), self);
                             break; //skip final increment

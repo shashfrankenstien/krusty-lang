@@ -84,7 +84,7 @@ fn _import(ns: &mut NameSpace, args: &Vec<Block>) -> Block {
 
             let mut new_ns = NameSpace::new(Some(&p), Some(ns));
             new_ns.run(&tree);
-            new_ns.to_object()
+            new_ns.to_block()
         },
         _ => Block::Null
     }
@@ -104,7 +104,7 @@ fn _import_native(ns: &mut NameSpace, args: &Vec<Block>) -> Block {
 
             let mut new_ns = NameSpace::new(Some(&p), Some(ns));
             new_ns.module.load_dylib();
-            new_ns.to_object()
+            new_ns.to_block()
         },
         _ => Block::Null
     }
