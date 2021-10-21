@@ -368,21 +368,49 @@ impl Expression {
                             break; // return out of parse
                         },
 
+                        (_, lexer::Token::Assign) => {
+                            print_verbose!("New :P!!! {:?}", op);
+                            self.op = Block::Operator(op);
+
+                            tokens.inc(); // skip '=' operator
+                            let mut rhs = Expression::new();
+                            rhs.parse(tokens, end);
+                            if rhs.elems.len()!=0 {
+                                self.elems.push(rhs.to_block());
+                            }
+                            break; //skip final increment
+                        },
+
                         (Block::Null, _) => {
                             print_verbose!("New operator!!! {:?}", op);
                             self.op = Block::Operator(op)
+                        },
+
+                        (Block::Operator(lexer::Token::FuncCall), lexer::Token::FuncCall) => {
+                            // other cases where self.op is not FuncCall are automatically handled
+                            if self.elems.len() == 0 {
+                                panic!("Function call without symbol or expression");
+                            }
+                            self._convert_to_child_elem();
+                            self.op = Block::Operator(op);
                         },
 
                         (_, lexer::Token::Index) => {
                             if self.elems.len() == 0 {
                                 panic!("Suffix [] without symbol or expression");
                             }
-                            self._convert_to_child_elem();
-                            self.op = Block::Operator(op);
+                            tokens.inc_n(2); // skip Index operator and '[' char
+                            let mut ex = Expression {
+                                op: Block::Operator(op),
+                                elems: vec![self.elems.pop().unwrap()],
+                            };
+                            ex.parse(tokens, Some(&[lexer::Token::ScopeEnd(']')]));
+                            self.elems.push(ex.to_block());
+                            break; //skip final increment
                         },
 
-                        (Block::Operator(lexer::Token::FuncCall), lexer::Token::FuncCall) => {
-                            // other cases where self.op is not FuncCall are automatically handled
+                        (_, lexer::Token::Comparison(_)) => {
+                            // if comp operator is encountered, convert current expression into child with comp as operator
                             if self.elems.len() == 0 {
                                 panic!("Function call without symbol or expression");
                             }

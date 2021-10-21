@@ -16,7 +16,10 @@ x = 1;
 print(test_func(), x);
 
 x = 11;
-print(test_func(), x);
+res = test_func();
+print(res, x);
+assert(res=="double digit");
 
 x = x * -1;
 print(test_func(), x);
+assert(test_func()=="negative");

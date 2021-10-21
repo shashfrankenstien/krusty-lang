@@ -9,4 +9,7 @@ div = arith.div;
 circle = {
     area = (radius) => {ret libpi.pi * radius * radius;};
     circumference = (radius) => {ret libpi.pi * radius * 2;};
-}
+};
+
+
+assert(circle.area(2)==libpi.pi * 2 * 2);

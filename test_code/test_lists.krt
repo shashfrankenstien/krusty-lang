@@ -11,11 +11,14 @@ print("passed test 2");
 c = (1,2,3, 4 + 1);
 print(type(c));
 print(c);
+assert(c[3]==5);
 print("passed test 3");
 
-d = (1,2,3, 4 + 1, 5);
+d = (1,2,3, 4 + 1, '5');
 print(type(d));
 print(d);
+assert(d[3]==5);
+assert(d[4]=='5');
 print("passed test 4");
 
 hundy = () => {
@@ -26,4 +29,8 @@ lavan = 11;
 e = (1,2,3, lavan, hundy());
 print(type(e));
 print(e);
+assert(e[3]==lavan);
+assert(e[3]!=hundy());
+assert(e[3]<hundy());
+assert(e[4]==hundy());
 print("passed test 5");

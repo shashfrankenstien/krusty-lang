@@ -2,12 +2,17 @@ math = import("math");
 
 res = foreach((1,2,3,4,5), (x)=>{ret math.add(x, 10);});
 print(res);
+assert(res[0]==11);
 
 
 plus5 = (a)=>{ret a + 5;};
 res = foreach((1,2,3,4,5), plus5);
 print(res);
+assert(res[0]==6);
+assert(res[4]==10);
 
 
 k = foreach("shashank", print);
 print(k);
+
+assert(k[0]==null);

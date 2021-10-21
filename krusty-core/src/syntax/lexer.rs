@@ -143,12 +143,19 @@ impl TokenStream {
     fn _valid_index(&self, i: usize) -> bool {
         i < self.tokens.len()
     }
-    pub fn inc(&mut self) {
-        self._pointer += 1;
+
+    pub fn inc_n(&mut self, n: usize) {
+        self._pointer += n;
     }
-    // fn dec(&mut self) {
-    //     self._pointer -= 1;
-    // }
+    pub fn inc(&mut self) {
+        self.inc_n(1);
+    }
+    pub fn dec_n(&mut self, n: usize) {
+        self._pointer -= n;
+    }
+    pub fn dec(&mut self) {
+        self.dec_n(1);
+    }
 
     pub fn current_idx(&self) -> usize {
         self._pointer
