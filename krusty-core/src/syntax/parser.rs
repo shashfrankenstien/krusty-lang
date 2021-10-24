@@ -83,6 +83,26 @@ impl Block {
         }
     }
 
+    pub fn update_list(&mut self, idx: usize, val: Block) -> Result<(), &'static str> {
+        match self {
+            Block::List(l) => {
+                l[idx] = val;
+                Ok(())
+            },
+            _ => Err("List update error: Not a list"),
+        }
+    }
+
+    pub fn push_list(&mut self, val: Block) -> Result<(), &'static str> {
+        match self {
+            Block::List(l) => {
+                l.push(val);
+                Ok(())
+            },
+            _ => Err("List push error: Not a list"),
+        }
+    }
+
     pub fn get_bool(&self) -> Option<bool> {
         match self {
             Block::Bool(b) => Some(*b),
@@ -222,6 +242,20 @@ impl Expression {
         self.elems.push(exp.to_block());
     }
 
+    fn _generic_add_new_op(&mut self, tokens: &mut lexer::TokenStream, end: Option<&[lexer::Token]>) {
+        let mut exp = Expression::new();
+        print_verbose!("-----------+ Gen1 {:?}", self.op);
+        if self.elems.len() > 0 {
+            exp.elems.push(self.elems.pop().unwrap()); // setup LHS
+        }
+        exp.parse(tokens, end); // look till end token reached
+        if exp.elems.len()!=0 {
+            self.elems.push(exp.to_block());
+        }
+        print_verbose!("-----------+ Gen2 {:?} {:?}", tokens.get_current(), self);
+    }
+
+
     fn parse(&mut self, tokens: &mut lexer::TokenStream, end: Option<&[lexer::Token]>) {
         // println!("-->");
         // println!("{:?}", tokens);
@@ -327,6 +361,7 @@ impl Expression {
                                             let mut body_exp = Expression::new();
                                             body_exp.parse(tokens, Some(&[lexer::Token::Separator]));
                                             exp.elems.push(Block::FuncBody(vec![body_exp]));
+                                            tokens.dec(); // decrement token so that it uses separator to break out of statement
                                             // panic!("Single statements funcs not supported yet")
                                         }
                                     }
@@ -368,8 +403,21 @@ impl Expression {
                             break; // return out of parse
                         },
 
+                        (Block::Null, _) => {
+                            print_verbose!("New operator!!! {:?}", op);
+                            self.op = Block::Operator(op)
+                        },
+
+                        (Block::Operator(lexer::Token::Assign), _) => {
+                            // if previous op is assign, any new operator will need to be secondary to it
+                            print_verbose!("Generic :P!!! {:?} {:?}", op, self);
+                            self._generic_add_new_op(tokens, end);
+                            break; //skip final increment
+                        },
+
                         (_, lexer::Token::Assign) => {
-                            print_verbose!("New :P!!! {:?}", op);
+                            print_verbose!("New :P!!! {:?} {:?}", op, self);
+                            self._convert_to_child_elem();
                             self.op = Block::Operator(op);
 
                             tokens.inc(); // skip '=' operator
@@ -378,12 +426,8 @@ impl Expression {
                             if rhs.elems.len()!=0 {
                                 self.elems.push(rhs.to_block());
                             }
+                            print_verbose!("New :d!!! {:?}", self);
                             break; //skip final increment
-                        },
-
-                        (Block::Null, _) => {
-                            print_verbose!("New operator!!! {:?}", op);
-                            self.op = Block::Operator(op)
                         },
 
                         (Block::Operator(lexer::Token::FuncCall), lexer::Token::FuncCall) => {
@@ -419,16 +463,7 @@ impl Expression {
                         },
 
                         _ => { // fallback sequence
-                            let mut exp = Expression::new();
-                            print_verbose!("-----------+ 1111 {:?} {:?}", self.op, op);
-                            if self.elems.len() > 0 {
-                                exp.elems.push(self.elems.pop().unwrap()); // setup LHS
-                            }
-                            exp.parse(tokens, end); // look till end token reached
-                            if exp.elems.len()!=0 {
-                                self.elems.push(exp.to_block());
-                            }
-                            print_verbose!("-----------+ 2222 {:?} {:?}", tokens.get_current(), self);
+                            self._generic_add_new_op(tokens, end);
                             break; //skip final increment
                         }
                     }

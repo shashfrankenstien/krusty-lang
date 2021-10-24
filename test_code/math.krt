@@ -7,9 +7,10 @@ mul = arith.mul;
 div = arith.div;
 
 circle = {
-    area = (radius) => {ret libpi.pi * radius * radius;};
-    circumference = (radius) => {ret libpi.pi * radius * 2;};
+    pi = libpi.pi;
+    area = (radius) => {ret libpi.pi * radius * radius};
+    circumference = (radius) => {ret libpi.pi * radius * 2};
 };
 
-
+assert(type(circle)==type({})); # module type
 assert(circle.area(2)==libpi.pi * 2 * 2);

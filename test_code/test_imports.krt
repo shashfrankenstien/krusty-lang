@@ -9,3 +9,7 @@ print(math.circle.area(2.5));
 print(math.circle.circumference(2.5));
 
 assert(math.libpi.pi==22/7);
+
+# test assignment into module
+math.weee = ()=>ret "Weee!";
+assert(math.weee()=="Weee!");

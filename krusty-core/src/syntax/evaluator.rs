@@ -76,6 +76,14 @@ impl<'a> NameSpace<'a> {
         }
     }
 
+    fn get_mut(&mut self, key: &String) -> Option<&mut Block> {
+        // for now, refs are mutable by default and can only be gotten from within the same scope
+        match self.module.vars.get_mut(key) {
+            Some(v) => Some(v),
+            None => panic!("Symbol '{}' not found in scope", key)
+        }
+    }
+
     fn set(&mut self, key: String, value: Block) {
         self.module.vars.insert(key, value);
     }
@@ -132,12 +140,36 @@ impl<'a> NameSpace<'a> {
     }
 
     fn assign(&mut self, key: &Block, value: &Block) {
-        if let Block::Object(Token::Symbol(var)) = key {
-            print_verbose!("assign {:?}", var);
-            let val = self.resolve(value);
-            self.set(var.to_string(), val);
-        } else {
-            panic!("LHS is not a valid symbol");
+        let val = self.resolve(value);
+        match key {
+            Block::Object(Token::Symbol(var)) => {
+                print_verbose!("assign {:?}", var);
+                self.set(var.to_string(), val);
+            },
+            Block::Expr(e) => {
+                if let Block::Object(Token::Symbol(k)) = &e.elems[0] {
+                    let variable = self.get_mut(&k); // get mutable reference to variable so it can be modified inplace
+                    match (variable, &e.op, &e.elems[1]) {
+                        (Some(l), Block::Operator(Token::Index), Block::Object(Token::Number(n))) => {
+                            match l.update_list(*n as usize, val) {
+                                Ok(_) => (),
+                                Err(e) => panic!("List assignment failed {}", e)
+                            }
+                        },
+                        (Some(Block::Mod(m)), Block::Operator(Token::Accessor), Block::Object(Token::Symbol(prop))) => {
+                            m.vars.insert(prop.to_string(), val);
+                        },
+                        _ =>()
+                    }
+                }
+
+            }
+            _ => {
+                let k = self.resolve(key);
+                println!("{:?}", key);
+                println!("{:?}", k);
+                panic!("LHS is not a valid symbol");
+            }
         }
     }
 

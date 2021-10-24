@@ -34,3 +34,10 @@ assert(e[3]!=hundy());
 assert(e[3]<hundy());
 assert(e[4]==hundy());
 print("passed test 5");
+
+# test list assignment
+assert(e[0]!=hundy());
+e[0] = hundy();
+print(e);
+assert(e[0]==hundy());
+print("passed test 6");
