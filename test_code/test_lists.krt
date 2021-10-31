@@ -41,3 +41,8 @@ e[0] = hundy();
 print(e);
 assert(e[0]==hundy());
 print("passed test 6");
+
+
+k = ();
+print(type(k));
+assert(len(k)==0);

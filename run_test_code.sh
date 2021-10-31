@@ -1,3 +1,7 @@
+if [ "$1" = "binary" ]; then
+    cargo build || exit 1
+fi
+
 for f in ./test_code/*.krt; do
     # do some stuff here with "$f"
     # remember to quote it or spaces may misbehave
