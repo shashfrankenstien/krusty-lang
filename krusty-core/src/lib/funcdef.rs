@@ -1,5 +1,6 @@
 use crate::syntax::evaluator::NameSpace;
 use crate::syntax::parser::Block;
+use crate::syntax::errors::KrustyErrorType;
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct FuncDef {
@@ -8,7 +9,7 @@ pub struct FuncDef {
 }
 
 
-pub type NativeFuncType = fn(&mut NameSpace, args: &Vec<Block>) -> Block;
+pub type NativeFuncType = fn(&mut NameSpace, args: &Vec<Block>) -> Result<Block, KrustyErrorType>;
 
 #[derive(Clone)]
 pub struct NativeFuncDef {

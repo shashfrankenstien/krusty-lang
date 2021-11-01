@@ -17,7 +17,7 @@ use crate::syntax::parser::Block;
 macro_rules! func_nargs_eq {
     ($vector:expr, $count:expr) => {
         if $vector.len() != $count {
-            panic!("expected {}, but received {} args", $count, $vector.len())
+            eval_error!(format!("expected {}, but received {} args", $count, $vector.len()))
         }
     };
 }
@@ -26,7 +26,7 @@ macro_rules! func_nargs_eq {
 macro_rules! func_nargs_le {
     ($vector:expr, $count:expr) => {
         if $vector.len() > $count {
-            panic!("expected 0..{}, but received {} args", $count, $vector.len())
+            eval_error!(format!("expected 0..{}, but received {} args", $count, $vector.len()))
         }
     };
 }

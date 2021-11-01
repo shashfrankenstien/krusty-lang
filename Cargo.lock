@@ -99,7 +99,7 @@ dependencies = [
 
 [[package]]
 name = "krusty"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "krusty-core",
  "krusty-repl",
@@ -108,7 +108,7 @@ dependencies = [
 
 [[package]]
 name = "krusty-core"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "lazy_static",
  "libloading",
@@ -118,7 +118,7 @@ dependencies = [
 
 [[package]]
 name = "krusty-repl"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "console",
  "ctrlc",

@@ -10,6 +10,7 @@ use std::path::PathBuf;
 use std::fmt;
 
 use super::lexer_tweaks;
+use super::errors::{Error, KrustyErrorType};
 
 
 lazy_static! {
@@ -58,7 +59,13 @@ pub enum Token {
     _NewLine,
 }
 
+// impl Drop for Token {
+//     fn drop(&mut self) { println!("Dropping Token {:?}", self); }
+// }
 
+// impl Drop for TokenStream {
+//     fn drop(&mut self) { println!("Dropping TokenStream {:?}", self); }
+// }
 
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -74,32 +81,32 @@ impl fmt::Display for Token {
 
 impl Token {
 
-    fn _which_matched(txt: &str) -> Option<Token> {
+    fn _which_matched(txt: &str) -> Result<Token, KrustyErrorType> {
         // println!("{}", txt);
         let m: Vec<_> = RE.matches(txt).into_iter().collect();
         if !m.is_empty() {
             return match m[0] {
-                0 if txt == "ret" => Some(Token::FuncReturn),
-                0 => Some(Token::Symbol(txt.to_string())),
+                0 if txt == "ret" => Ok(Token::FuncReturn),
+                0 => Ok(Token::Symbol(txt.to_string())),
 
-                1 if txt == "." => Some(Token::Accessor), // hacky workaround due to lack of regex lookaround
-                1 => Some(Token::Number(txt.parse().expect("This is not a number"))),
+                1 if txt == "." => Ok(Token::Accessor), // hacky workaround due to lack of regex lookaround
+                1 => Ok(Token::Number(txt.parse().expect("This is not a number"))),
 
-                2 => Some(Token::Text(txt[1..txt.len()-1].to_string())), // excluding quotes
-                3 => Some(Token::Arith(txt.chars().nth(0).unwrap())),
-                5 => Some(Token::ScopeStart(txt.chars().nth(0).unwrap())),
-                6 => Some(Token::ScopeEnd(txt.chars().nth(0).unwrap())),
-                4 => Some(Token::Separator),
-                7 => Some(Token::FuncDef),
-                8 => Some(Token::List),
-                9 => Some(Token::Assign),
-                10 => Some(Token::_Comment),
-                11 => Some(Token::_NewLine),
-                12 => Some(Token::Comparison(txt.to_string())),
-                _ => None
+                2 => Ok(Token::Text(txt[1..txt.len()-1].to_string())), // excluding quotes
+                3 => Ok(Token::Arith(txt.chars().nth(0).unwrap())),
+                5 => Ok(Token::ScopeStart(txt.chars().nth(0).unwrap())),
+                6 => Ok(Token::ScopeEnd(txt.chars().nth(0).unwrap())),
+                4 => Ok(Token::Separator),
+                7 => Ok(Token::FuncDef),
+                8 => Ok(Token::List),
+                9 => Ok(Token::Assign),
+                10 => Ok(Token::_Comment),
+                11 => Ok(Token::_NewLine),
+                12 => Ok(Token::Comparison(txt.to_string())),
+                _ => lex_error!("Unidentified symbol")
             }
         } else {
-            None
+            lex_error!("Unidentified symbol")
         }
     }
 
@@ -110,16 +117,8 @@ impl Token {
         }
     }
 
-    pub fn create(value: &str) -> Option<Token> {
-        if RE_PASS.is_match(value) {
-            return None
-        }
-
-        let token = match Token::_which_matched(value) {
-            Some(k) => k,
-            None => panic!("Illegal symbol {}", value)
-        };
-        Some(token)
+    pub fn create(value: &str) -> Result<Token, KrustyErrorType> {
+        Token::_which_matched(value)
     }
 }
 
@@ -228,7 +227,7 @@ fn trim_spaces(w: &String) -> &str {
     w.trim_matches(&[' ', '\t'] as &[_])
 }
 
-pub fn lex(code: &String) -> TokenStream {
+pub fn lex(code: &String) -> Result<TokenStream, KrustyErrorType> {
 
     let mut word = String::new();
     let mut out: TokenStream = TokenStream::new();
@@ -237,33 +236,30 @@ pub fn lex(code: &String) -> TokenStream {
         if trim_spaces(&word).len()>1 && !RE.is_match(trim_spaces(&word)) { // if it matches, continue till it doesn't match
             word.pop();
             // println!("{} {}", word, RE.is_match(&word));
-            match Token::create(trim_spaces(&word)) {
-                Some(t) => {
-                    print_verbose!("{:?}", t);
-                    lexer_tweaks::push_tweaked(t, &mut out.tokens);
-                    word.clear();
-                },
-                _ => ()
-            };
+
+            if !RE_PASS.is_match(&word) {
+                let t = Token::create(trim_spaces(&word))?;
+                print_verbose!("{:?}", t);
+                lexer_tweaks::push_tweaked(t, &mut out.tokens);
+                word.clear();
+            }
             word.push(c);
         }
     }
-    if word.len() != 0 { // check remainder
-        match Token::create(trim_spaces(&word)) {
-            Some(t) => lexer_tweaks::push_tweaked(t, &mut out.tokens),
-            _ => ()
-        }
+    if word.len() != 0 && !RE_PASS.is_match(&word) { // check remainder
+        let t = Token::create(trim_spaces(&word))?;
+        lexer_tweaks::push_tweaked(t, &mut out.tokens)
     }
     print_verbose!("\\mm/      lex done!!!");
-    return out;
+    return Ok(out);
 }
 
 
-pub fn lex_file(filepath: &PathBuf) -> TokenStream {
+pub fn lex_file(filepath: &PathBuf) -> Result<TokenStream, KrustyErrorType> {
     let filepath = fs::canonicalize(filepath).expect("No such File!");
     let mut f = fs::File::open(filepath).expect("Oh, no such file!");
     let mut code = String::new();
-    f.read_to_string(&mut code).expect("Can't read this");
+    f.read_to_string(&mut code)?;//.expect("Can't read this");
 
     lex(&code)
 }

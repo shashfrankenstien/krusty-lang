@@ -26,11 +26,19 @@ macro_rules! BLUE {
 }
 
 #[macro_export]
+#[allow(unused_macros)]
 macro_rules! GREEN {
     ($plain_string:expr) => {format!("\x1B[1;32m{}\x1B[0m", $plain_string)};
 }
 
 #[macro_export]
+#[allow(unused_macros)]
 macro_rules! RED {
     ($plain_string:expr) => {format!("\x1B[1;31m{}\x1B[0m", $plain_string)};
+}
+
+#[macro_export]
+#[allow(unused_macros)]
+macro_rules! YELLOW {
+    ($plain_string:expr) => {format!("\x1B[1;93m{}\x1B[0m", $plain_string)};
 }

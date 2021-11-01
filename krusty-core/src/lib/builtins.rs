@@ -6,13 +6,14 @@ use std::env; // required for print_verbose! macro
 use crate::syntax::{lexer, lexer::Token};
 use crate::syntax::{parser, parser::Block};
 use crate::syntax::evaluator::NameSpace;
+use crate::syntax::errors::{Error, KrustyErrorType};
 
 use crate::lib::helper;
 
 // ================ print =======================
 
 
-fn _print(_: &mut NameSpace, args: &Vec<Block>) -> Block {
+fn _print(_: &mut NameSpace, args: &Vec<Block>) -> Result<Block, KrustyErrorType> {
     match args.len() {
         0 => println!(""),
         _ => {
@@ -32,13 +33,13 @@ fn _print(_: &mut NameSpace, args: &Vec<Block>) -> Block {
             print!("\n");
         },
     };
-    Block::Null
+    Ok(Block::Null)
 }
 
 
-fn _type(_: &mut NameSpace, args: &Vec<Block>) -> Block {
+fn _type(_: &mut NameSpace, args: &Vec<Block>) -> Result<Block, KrustyErrorType> {
     func_nargs_eq!(args, 1);
-    match args[0] {
+    Ok(match args[0] {
         Block::Object(Token::Text(_)) => Block::Object(Token::Text("<Text>".to_string())),
         Block::Object(Token::Number(_)) => Block::Object(Token::Text("<Number>".to_string())),
         Block::Func(_) => Block::Object(Token::Text("<Func>".to_string())),
@@ -50,27 +51,27 @@ fn _type(_: &mut NameSpace, args: &Vec<Block>) -> Block {
         Block::Mod(_) => Block::Object(Token::Text("<Module>".to_string())),
         Block::Null => Block::Object(Token::Text("<Null>".to_string())),
         _ => Block::Object(Token::Text("<Type Not Found>".to_string()))
-    }
+    })
 }
 
 // ================ if =======================
 
-fn _if(_: &mut NameSpace, args: &Vec<Block>) -> Block {
+fn _if(_: &mut NameSpace, args: &Vec<Block>) -> Result<Block, KrustyErrorType> {
     func_nargs_eq!(args, 3);
     let condition = match &args[0] {
         Block::List(l) => l[0].get_bool().unwrap(),
         Block::Bool(b) => *b,
-        _ => panic!("unsupported condition statement")
+        _ => eval_error!("unsupported condition statement")
     };
 
     let branch = if condition==true { 1 } else { 2 };
-    args[branch].clone()
+    Ok(args[branch].clone())
 }
 
 
 // ================ import ================
 
-fn _import(ns: &mut NameSpace, args: &Vec<Block>) -> Block {
+fn _import(ns: &mut NameSpace, args: &Vec<Block>) -> Result<Block, KrustyErrorType> {
     func_nargs_eq!(args, 1);
     match &args[0] {
         Block::Object(Token::Text(p)) => {
@@ -79,20 +80,20 @@ fn _import(ns: &mut NameSpace, args: &Vec<Block>) -> Block {
                 p.set_extension("krt");
             }
             print_verbose!("import({:?})", p);
-            let mut tokens = lexer::lex_file(&p);
-            let tree = parser::parse(&mut tokens);
+            let mut tokens = lexer::lex_file(&p)?;
+            let tree = parser::parse(&mut tokens)?;
 
             let mut new_ns = NameSpace::new(Some(&p), Some(ns));
-            new_ns.run(&tree);
+            new_ns.run(&tree)?;
             new_ns.to_block()
         },
-        _ => Block::Null
+        _ => Ok(Block::Null)
     }
 }
 
 
 
-fn _import_native(ns: &mut NameSpace, args: &Vec<Block>) -> Block {
+fn _import_native(ns: &mut NameSpace, args: &Vec<Block>) -> Result<Block, KrustyErrorType> {
     func_nargs_eq!(args, 1);
     match &args[0] {
         Block::Object(Token::Text(p)) => {
@@ -106,94 +107,97 @@ fn _import_native(ns: &mut NameSpace, args: &Vec<Block>) -> Block {
             new_ns.module.load_dylib();
             new_ns.to_block()
         },
-        _ => Block::Null
+        _ => Ok(Block::Null)
     }
 }
 
 
-fn _spill(ns: &mut NameSpace, args: &Vec<Block>) -> Block {
+fn _spill(ns: &mut NameSpace, args: &Vec<Block>) -> Result<Block, KrustyErrorType> {
     func_nargs_eq!(args, 1);
     match &args[0] {
         Block::Mod(m) => {
             ns.module.vars.extend(m.vars.clone());
         },
-        _ => ()
-    }
-    Block::Null
+        _ => eval_error!("Unsupported argument to spill")
+    };
+    Ok(Block::Null)
 }
 
 // ================ iter ================
 
-fn _len(_: &mut NameSpace, args: &Vec<Block>) -> Block {
+fn _len(_: &mut NameSpace, args: &Vec<Block>) -> Result<Block, KrustyErrorType> {
     func_nargs_eq!(args, 1);
     let length = match &args[0] {
         Block::List(l) => l.len(),
         Block::Object(Token::Text(t)) => t.len(),
-        _ => panic!("len() not supported")
+        _ => eval_error!("len() not supported")
     };
-    Block::Object(Token::Number(length as f64))
+    Ok(Block::Object(Token::Number(length as f64)))
 }
 
-fn _foreach(ns: &mut NameSpace, args: &Vec<Block>) -> Block {
+fn _foreach(ns: &mut NameSpace, args: &Vec<Block>) -> Result<Block, KrustyErrorType> {
     func_nargs_eq!(args, 2);
     if let Block::Func(_) | Block::NativeFunc(_) = &args[1] {
         let res: Vec<Block>;
         return match &args[0] {
             Block::List(l) => {
-                res = l.iter().map(|x| ns.eval_func_obj(&args[1], &x, None)).collect();
-                Block::List(res)
+                res = NameSpace::resolve_vector(&l, &mut |x| ns.eval_func_obj(&args[1], &x, None))?;
+                Ok(Block::List(res))
             },
             Block::Object(Token::Text(t)) => {
-                res = t.chars().map(|c| ns.eval_func_obj(&args[1], &Block::Object(Token::Text(c.to_string())), None)).collect();
-                Block::List(res)
+                let mut chars = t.chars().collect::<Vec<char>>();
+                res = NameSpace::resolve_vector(&mut chars, &mut |c| ns.eval_func_obj(&args[1], &Block::Object(Token::Text(c.to_string())), None))?;
+                // res = t.chars().map(|c| ns.eval_func_obj(&args[1], &Block::Object(Token::Text(c.to_string())), None)).collect();
+                Ok(Block::List(res))
             },
-            _ => panic!("iteration not supported")
+            _ => eval_error!("iteration not supported")
         }
     } else {
-        panic!("second argument should be a function");
+        eval_error!("second argument should be a function");
     }
 }
 
 // ================ module inspect ================
 
-fn _vars(ns: &mut NameSpace, args: &Vec<Block>) -> Block {
+fn _vars(ns: &mut NameSpace, args: &Vec<Block>) -> Result<Block, KrustyErrorType> {
     func_nargs_le!(args, 1); // 0 or 1 args
     let mut vars: Vec<Block> = Vec::new();
     if args.len() == 0 {
         for (k,_) in &ns.module.vars {
             vars.push(Block::Object(Token::Text(k.clone())));
         }
-        Block::List(vars)
+        Ok(Block::List(vars))
     }
     else if let Block::Mod(m) = &args[0] {
         for (k,_) in &m.vars {
             vars.push(Block::Object(Token::Text(k.clone())));
         }
-        Block::List(vars)
+        Ok(Block::List(vars))
     } else {
-        Block::Null
+        Ok(Block::Null)
     }
 }
 
 
 // ================ process =======================
 
-fn _exit(_ns: &mut NameSpace, args: &Vec<Block>) -> Block {
+fn _exit(_ns: &mut NameSpace, args: &Vec<Block>) -> Result<Block, KrustyErrorType> {
     func_nargs_eq!(args, 0);
-    std::process::exit(0);
+    // std::process::exit(0);
+    sys_exit_error!()
 }
 
 
-fn _assert(_ns: &mut NameSpace, args: &Vec<Block>) -> Block {
+fn _assert(_ns: &mut NameSpace, args: &Vec<Block>) -> Result<Block, KrustyErrorType> {
     func_nargs_eq!(args, 1);
     let res = match &args[0] {
         Block::Bool(b) => *b==true,
-        _ => panic!("assert argument not supported")
+        _ => eval_error!("assert argument not supported")
     };
     if res!=true {
-        panic!("Assertion error");
+        eval_error!("Assertion error");
     }
-    args[0].clone()
+    Ok(args[0].clone())
 }
 
 

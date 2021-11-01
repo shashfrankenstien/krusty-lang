@@ -7,6 +7,7 @@ use std::env; // required for print_verbose! macro
 use crate::syntax::lexer;
 use crate::lib::{funcdef, moddef};
 
+use super::errors::{Error, KrustyErrorType};
 
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
@@ -24,7 +25,6 @@ pub enum Block {
     Mod(moddef::Module),
     ModBody(Vec<Expression>), // same definition as FuncBody, but evaluated differently
 }
-
 
 
 impl fmt::Display for Block {
@@ -130,12 +130,12 @@ impl Expression {
         }
     }
 
-    pub fn to_block(mut self) -> Block {
+    pub fn to_block(mut self) -> Result<Block, KrustyErrorType> {
         if self.op == Block::Null && self.elems.len() == 1 {
-            self.elems.pop().unwrap()
+            Ok(self.elems.pop().unwrap())
         } else
         if let Block::Operator(lexer::Token::List) | Block::Null = self.op {
-            Block::List(self.elems)
+            Ok(Block::List(self.elems))
         } else
         if let Block::Operator(lexer::Token::FuncDef) = self.op {
             if self.elems.len() == 2 {
@@ -148,20 +148,24 @@ impl Expression {
                 }
                 match body {
                     Block::FuncBody(_) | Block::Expr(_) => (),
-                    _ => panic!("Invalid function body")
+                    _ => parser_error!("Invalid function body")
                 }
-                Block::Func(Box::new(funcdef::FuncDef {args, body}))
+                Ok(Block::Func(Box::new(funcdef::FuncDef {args, body})))
             } else {
-                panic!("Illegal function definition - {:?}", self)
+                parser_error!(format!("Illegal function definition - {:?}", self))
             }
         }
         else {
-            Block::Expr(Box::new(self))
+            Ok(Block::Expr(Box::new(self)))
         }
     }
 
 
-    fn parse_scope(tokens: &mut lexer::TokenStream, end: Option<&[lexer::Token]>) -> Vec<Expression> {
+    fn parse_scope(
+        tokens: &mut lexer::TokenStream,
+        end: Option<&[lexer::Token]>
+    ) -> Result<Vec<Expression>, KrustyErrorType> {
+
         let mut output: Vec<Expression> = Vec::new();
         let mut end_tokens = end.unwrap_or(&[]).to_vec();
         end_tokens.push(lexer::Token::Separator);
@@ -182,7 +186,7 @@ impl Expression {
             let mut exp = Expression::new();
             print_verbose!("\nParsing Expression");
             print_verbose!("---    -----     ----  {:?} {:?}", tokens.get_current(), Some(end_tokens.as_slice()));
-            exp.parse(tokens, Some(end_tokens.as_slice()));
+            exp.parse(tokens, Some(end_tokens.as_slice()))?;
             print_verbose!("---    -----     ----  {:?} {:?}", tokens.get_current(), Some(end_tokens.as_slice()));
             print_verbose!("* {:?} {:?}", exp, tokens.get_current());
             if exp.elems.len()>0 {
@@ -196,7 +200,7 @@ impl Expression {
             }
 
         }
-        output
+        Ok(output)
     }
 
     fn _count_list_elems(tokens: &lexer::TokenStream) -> i32 {
@@ -232,31 +236,42 @@ impl Expression {
         elem_count
     }
 
-    fn _convert_to_child_elem(&mut self) {
+    fn _convert_to_child_elem(&mut self) -> Result<(), KrustyErrorType> {
         // make copy of current self, clear self and add the copy as first elem
         let exp = Expression {
             op: self.op.clone(),
             elems: self.elems.clone(),
         };
         self.elems.clear();
-        self.elems.push(exp.to_block());
+        self.elems.push(exp.to_block()?);
+        Ok(())
     }
 
-    fn _generic_add_new_op(&mut self, tokens: &mut lexer::TokenStream, end: Option<&[lexer::Token]>) {
+    fn _generic_add_new_op(
+        &mut self,
+        tokens: &mut lexer::TokenStream,
+        end: Option<&[lexer::Token]>
+    ) -> Result<(), KrustyErrorType> {
+
         let mut exp = Expression::new();
         print_verbose!("-----------+ Gen1 {:?}", self.op);
         if self.elems.len() > 0 {
             exp.elems.push(self.elems.pop().unwrap()); // setup LHS
         }
-        exp.parse(tokens, end); // look till end token reached
+        exp.parse(tokens, end)?; // look till end token reached
         if exp.elems.len()!=0 {
-            self.elems.push(exp.to_block());
+            self.elems.push(exp.to_block()?);
         }
         print_verbose!("-----------+ Gen2 {:?} {:?}", tokens.get_current(), self);
+        Ok(())
     }
 
 
-    fn parse(&mut self, tokens: &mut lexer::TokenStream, end: Option<&[lexer::Token]>) {
+    fn parse(
+        &mut self,
+        tokens: &mut lexer::TokenStream,
+        end: Option<&[lexer::Token]>
+    ) -> Result<(), KrustyErrorType> {
         // println!("-->");
         // println!("{:?}", tokens);
         loop {
@@ -291,16 +306,16 @@ impl Expression {
                     tokens.inc(); //skip over the scope start token
                     let exp_obj: Block = match s {
                         '{' => {
-                            let scoped = Expression::parse_scope(tokens, Some(&[lexer::Token::ScopeEnd('}')]));
+                            let scoped = Expression::parse_scope(tokens, Some(&[lexer::Token::ScopeEnd('}')]))?;
                             Block::ModBody(scoped) // same definition as FuncBody, but evaluated differently
                         },
                         '[' => {
                             if let Block::Operator(lexer::Token::Index) = self.op {
                                 let mut ex = Expression::new();
-                                ex.parse(tokens, Some(&[lexer::Token::ScopeEnd(']')]));
-                                ex.to_block()
+                                ex.parse(tokens, Some(&[lexer::Token::ScopeEnd(']')]))?;
+                                ex.to_block()?
                             } else {
-                                panic!("Illegal use of [] operator");
+                                parser_error!("Illegal use of [] operator")
                             }
                         },
                         '(' => {
@@ -311,22 +326,22 @@ impl Expression {
                             if elem_count == 1 {
                                 // if only one elem, the syntax is like (a + 1) or (x)
                                 // these are not considered list like
-                                ex_list.parse(tokens, Some(&[lexer::Token::ScopeEnd(')')]));
+                                ex_list.parse(tokens, Some(&[lexer::Token::ScopeEnd(')')]))?;
                             } else {
                                 // parse each element
                                 ex_list.op = Block::Operator(lexer::Token::List);
 
                                 for _ in 0..(elem_count - 1) {
                                     let mut ex = Expression::new();
-                                    ex.parse(tokens, Some(&[lexer::Token::List]));
+                                    ex.parse(tokens, Some(&[lexer::Token::List]))?;
                                     if ex.elems.len() > 0 {
-                                        ex_list.elems.push(ex.to_block());
+                                        ex_list.elems.push(ex.to_block()?);
                                     }
                                 }
                                 let mut ex = Expression::new();
-                                ex.parse(tokens, Some(&[lexer::Token::ScopeEnd(')')]));
+                                ex.parse(tokens, Some(&[lexer::Token::ScopeEnd(')')]))?;
                                 if ex.elems.len() > 0 {
-                                    ex_list.elems.push(ex.to_block());
+                                    ex_list.elems.push(ex.to_block()?);
                                 }
                             }
 
@@ -335,9 +350,9 @@ impl Expression {
                                 tokens.inc();
                             }
                             print_verbose!("<<< SCOPETEST() {:?} {:?}", tokens.get_current(), ex_list);
-                            ex_list.to_block()
+                            ex_list.to_block()?
                         },
-                        _ => panic!("Illegal scope start char")
+                        _ => parser_error!("Illegal scope start char")
                     };
 
                     if let Some(nxt_t) = tokens.get_current() {
@@ -347,29 +362,28 @@ impl Expression {
                             exp.op = Block::Operator(lexer::Token::FuncDef);
                             tokens.inc(); // go to next token after the funcdef token
                             match tokens.get_current() {
-                                None => panic!("Incomplete function definition"),
+                                None => parser_error!("Incomplete function definition"),
                                 Some(t) => {
                                     match t {
                                         lexer::Token::ScopeStart('{') => {
                                             tokens.inc(); // move into scope
                                             print_verbose!("==========k1======{:?}", tokens.get_current());
-                                            let scoped = Expression::parse_scope(tokens, Some(&[lexer::Token::ScopeEnd('}')]));
+                                            let scoped = Expression::parse_scope(tokens, Some(&[lexer::Token::ScopeEnd('}')]))?;
                                             print_verbose!("==========k2======{:?}", tokens.get_current());
                                             exp.elems.push(Block::FuncBody(scoped));
                                         },
                                         _ => {
                                             let mut body_exp = Expression::new();
-                                            body_exp.parse(tokens, Some(&[lexer::Token::Separator]));
+                                            body_exp.parse(tokens, Some(&[lexer::Token::Separator]))?;
                                             exp.elems.push(Block::FuncBody(vec![body_exp]));
                                             tokens.dec(); // decrement token so that it uses separator to break out of statement
-                                            // panic!("Single statements funcs not supported yet")
                                         }
-                                    }
+                                    };
                                 }
                             }
                             match exp.elems[1] {
-                                Block::FuncBody(_) | Block::Expr(_) => self.elems.push(exp.to_block()),
-                                _ => panic!("Invalid function definition {:?}", exp) // func body should be FuncBody or Expr
+                                Block::FuncBody(_) | Block::Expr(_) => self.elems.push(exp.to_block()?),
+                                _ => parser_error!(format!("Invalid function definition {:?}", exp)) // func body should be FuncBody or Expr
                             };
                             // break; // function definition complete
                         } else {
@@ -391,13 +405,13 @@ impl Expression {
                             self.op = Block::Operator(op);
                             tokens.inc(); // go to next token to parse return expression
                             let mut exp = Expression::new();
-                            exp.parse(tokens, end); // look for RHS
+                            exp.parse(tokens, end)?; // look for RHS
                             // exp.parse(tokens, Some(&[lexer::Token::Separator])); // look for RHS
                             // flatten values of return statement
                             if exp.elems.len() == 1 {
                                 self.elems.push(exp.elems[0].clone());
                             } else if exp.elems.len() > 1 {
-                                self.elems.push(exp.to_block());
+                                self.elems.push(exp.to_block()?);
                             }
                             // println!(">> {:?}", self);
                             break; // return out of parse
@@ -411,20 +425,20 @@ impl Expression {
                         (Block::Operator(lexer::Token::Assign), _) => {
                             // if previous op is assign, any new operator will need to be secondary to it
                             print_verbose!("Generic :P!!! {:?} {:?}", op, self);
-                            self._generic_add_new_op(tokens, end);
+                            self._generic_add_new_op(tokens, end)?;
                             break; //skip final increment
                         },
 
                         (_, lexer::Token::Assign) => {
                             print_verbose!("New :P!!! {:?} {:?}", op, self);
-                            self._convert_to_child_elem();
+                            self._convert_to_child_elem()?;
                             self.op = Block::Operator(op);
 
                             tokens.inc(); // skip '=' operator
                             let mut rhs = Expression::new();
-                            rhs.parse(tokens, end);
+                            rhs.parse(tokens, end)?;
                             if rhs.elems.len()!=0 {
-                                self.elems.push(rhs.to_block());
+                                self.elems.push(rhs.to_block()?);
                             }
                             print_verbose!("New :d!!! {:?}", self);
                             break; //skip final increment
@@ -433,37 +447,37 @@ impl Expression {
                         (Block::Operator(lexer::Token::FuncCall), lexer::Token::FuncCall) => {
                             // other cases where self.op is not FuncCall are automatically handled
                             if self.elems.len() == 0 {
-                                panic!("Function call without symbol or expression");
+                                parser_error!("Function call without symbol or expression");
                             }
-                            self._convert_to_child_elem();
+                            self._convert_to_child_elem()?;
                             self.op = Block::Operator(op);
                         },
 
                         (_, lexer::Token::Index) => {
                             if self.elems.len() == 0 {
-                                panic!("Suffix [] without symbol or expression");
+                                parser_error!("Suffix [] without symbol or expression");
                             }
                             tokens.inc_n(2); // skip Index operator and '[' char
                             let mut ex = Expression {
                                 op: Block::Operator(op),
                                 elems: vec![self.elems.pop().unwrap()],
                             };
-                            ex.parse(tokens, Some(&[lexer::Token::ScopeEnd(']')]));
-                            self.elems.push(ex.to_block());
+                            ex.parse(tokens, Some(&[lexer::Token::ScopeEnd(']')]))?;
+                            self.elems.push(ex.to_block()?);
                             break; //skip final increment
                         },
 
                         (_, lexer::Token::Comparison(_)) => {
                             // if comp operator is encountered, convert current expression into child with comp as operator
                             if self.elems.len() == 0 {
-                                panic!("Function call without symbol or expression");
+                                parser_error!("Function call without symbol or expression");
                             }
-                            self._convert_to_child_elem();
+                            self._convert_to_child_elem()?;
                             self.op = Block::Operator(op);
                         },
 
                         _ => { // fallback sequence
-                            self._generic_add_new_op(tokens, end);
+                            self._generic_add_new_op(tokens, end)?;
                             break; //skip final increment
                         }
                     }
@@ -474,6 +488,7 @@ impl Expression {
             tokens.inc();
         }
         // println!("<--");
+        Ok(())
     }
 }
 
@@ -482,13 +497,13 @@ impl Expression {
 
 
 
-pub fn parse(tokens: &mut lexer::TokenStream) -> Vec<Expression> {
+pub fn parse(tokens: &mut lexer::TokenStream) -> Result<Vec<Expression>, KrustyErrorType> {
     print_verbose!("\n--------parsing start!--------");
 
-    let output: Vec<Expression> = Expression::parse_scope(tokens, None);
+    let output: Vec<Expression> = Expression::parse_scope(tokens, None)?;
 
     print_verbose!("\n--------parsing done!--------");
     print_verbose_iter!(output);
     print_verbose!("------------------\n");
-    output
+    Ok(output)
 }
