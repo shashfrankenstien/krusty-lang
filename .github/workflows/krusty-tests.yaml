@@ -19,7 +19,7 @@ jobs:
       - name: Run on windows
         if: matrix.os == 'windows-latest'
         # run: Get-ChildItem "test_code/*.kry" | Foreach {cargo run $_.fullname; if( -not $? ) {Exit-PSSession 1; break}}
-        run: powershell -Command "cargo run (get-item test_code\*.krt)"
+        run: .\run_test_code.bat
 
       - name: Not on windows
         if: matrix.os != 'windows-latest'
