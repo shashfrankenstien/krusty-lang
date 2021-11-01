@@ -6,9 +6,9 @@ use std::env; // required for print_verbose! macro
 use crate::syntax::{lexer, lexer::Token};
 use crate::syntax::{parser, parser::Block};
 use crate::syntax::evaluator::NameSpace;
-use crate::syntax::errors::{Error, KrustyErrorType};
 
-use crate::lib::helper;
+use super::errors::{Error, KrustyErrorType};
+use super::helper;
 
 // ================ print =======================
 

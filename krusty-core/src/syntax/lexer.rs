@@ -9,8 +9,8 @@ use std::fs;
 use std::path::PathBuf;
 use std::fmt;
 
+use crate::lib::errors::{Error, KrustyErrorType};
 use super::lexer_tweaks;
-use super::errors::{Error, KrustyErrorType};
 
 
 lazy_static! {

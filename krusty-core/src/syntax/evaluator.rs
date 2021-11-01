@@ -5,11 +5,11 @@ use path_slash::PathBufExt; // for PatjBuf::from_slash() trait
 #[cfg(debug_assertions)]
 use std::env; // required for print_verbose! macro
 
-use crate::syntax::parser::{Block, Expression};
-use crate::syntax::lexer::Token;
-use crate::lib::{moddef, builtins};
+use super::parser::{Block, Expression};
+use super::lexer::Token;
 
-use super::errors::{Error, KrustyErrorType};
+use crate::lib::{moddef, builtins};
+use crate::lib::errors::{Error, KrustyErrorType};
 
 
 

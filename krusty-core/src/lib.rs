@@ -8,7 +8,6 @@ pub mod syntax {
     pub mod parser;
     pub mod evaluator;
     mod lexer_tweaks;
-    pub mod errors;
 }
 
 
@@ -18,6 +17,7 @@ pub mod lib {
     pub mod funcdef;
     pub mod moddef;
     pub mod builtins;
+    pub mod errors;
 }
 
 

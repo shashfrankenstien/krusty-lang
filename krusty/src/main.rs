@@ -10,7 +10,7 @@ use krusty_repl::prompt;
 use krusty_core::syntax::lexer;
 use krusty_core::syntax::parser;
 use krusty_core::syntax::evaluator;
-use krusty_core::syntax::errors::{Error, KrustyErrorType};
+use krusty_core::lib::errors::{Error, KrustyErrorType};
 
 const VERSION_STR: &'static str = env!("CARGO_PKG_VERSION");
 
@@ -86,7 +86,7 @@ fn run_file(filepath: &PathBuf) -> Result<(), KrustyErrorType> {
 }
 
 
-fn main() -> Result<(),i8> {
+fn main() -> Result<(), i8> {
     let argv: Vec<String> = env::args().collect();
     // println!("{:?}", argv.len());
     let mut success: bool = true;

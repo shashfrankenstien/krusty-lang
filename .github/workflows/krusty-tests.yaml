@@ -23,4 +23,4 @@ jobs:
 
       - name: Not on windows
         if: matrix.os != 'windows-latest'
-        run: cargo run test_code/*.krt
+        run: ./run_test_code.sh

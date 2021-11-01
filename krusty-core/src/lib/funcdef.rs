@@ -1,6 +1,6 @@
 use crate::syntax::evaluator::NameSpace;
 use crate::syntax::parser::Block;
-use crate::syntax::errors::KrustyErrorType;
+use super::errors::KrustyErrorType;
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct FuncDef {

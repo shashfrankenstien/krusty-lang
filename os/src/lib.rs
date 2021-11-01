@@ -6,11 +6,11 @@ use std::env;
 
 use krusty_core::syntax::lexer::Token;
 use krusty_core::syntax::parser::Block;
-use krusty_core::syntax::errors::{Error, KrustyErrorType};
 use krusty_core::syntax::evaluator::NameSpace;
 
 #[macro_use] extern crate krusty_core;
 use krusty_core::lib::{moddef, helper};
+use krusty_core::lib::errors::{Error, KrustyErrorType};
 
 
 fn _read_dir_to_list(dirpath: &PathBuf) -> Result<Vec<Block>, std::io::Error> {

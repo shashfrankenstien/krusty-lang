@@ -4,10 +4,10 @@ use std::fmt;
 #[cfg(debug_assertions)]
 use std::env; // required for print_verbose! macro
 
-use crate::syntax::lexer;
 use crate::lib::{funcdef, moddef};
+use crate::lib::errors::{Error, KrustyErrorType};
 
-use super::errors::{Error, KrustyErrorType};
+use super::lexer;
 
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
