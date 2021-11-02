@@ -1,0 +1,14 @@
+test_func = (val) => {
+	try(
+		()=>{val + 9},
+		() => {ret "err"}
+	)
+};
+
+one = test_func(10);
+two = test_func('10');
+
+print(one, two);
+
+assert(one==19);
+assert(two=="err");

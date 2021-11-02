@@ -6,6 +6,7 @@ use std::fmt;
 
 pub trait KrustyError {
 
+	fn name(&self) -> String;
 	fn msg(&self) -> &String;
 	fn print_traceback(&self);
 
@@ -27,6 +28,16 @@ pub enum Error {
 
 impl KrustyError for Error {
 
+	fn name(&self) -> String {
+		match self {
+			Error::GenericError{..} => "GenericError".to_string(),
+			Error::LexerError{..} => "LexerError".to_string(),
+			Error::ParserError{..} => "ParserError".to_string(),
+			Error::EvalError{..} => "EvalError".to_string(),
+			Error::SysExit{..} => "SysExit".to_string(),
+		}
+	}
+
 	fn msg(&self) -> &String {
 		match self {
 			Error::GenericError{msg, ..} => msg,
@@ -39,7 +50,7 @@ impl KrustyError for Error {
 
 	fn print_traceback(&self) {
 		println!("**KrustyError**");
-		println!("{}", self.msg());
+		println!("{}: {}", self.name(), self.msg());
 	}
 
 	fn as_any(&self) -> &dyn Any {

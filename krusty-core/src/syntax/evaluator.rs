@@ -267,7 +267,7 @@ impl<'a> NameSpace<'a> {
                     print_verbose!("CALL {} {:?}", name, f.body);
                     match &f.body { // return function result
                         Block::FuncBody(elist) => exec_env.run(&elist),
-                        _ => eval_error!(format!("function '{}' definition error", name)),
+                        _ => eval_error!(format!("Function '{}' definition error", name)),
                     }
                 }
             },
@@ -275,14 +275,14 @@ impl<'a> NameSpace<'a> {
                 let clean_args: Vec<Block> = NameSpace::resolve_vector(&args, &mut |x| self.resolve(x))?;
                 (f.func)(self, &clean_args)
             }
-            _ => eval_error!(format!("function '{}' definition error", name))
+            _ => eval_error!(format!("Function '{}' definition error", name))
         }
     }
 
     fn eval_func(&mut self, name: &String, args: &Block) -> Result<Block, KrustyErrorType> {
         // println!("<F> {:?}", args);
         match self.get(name) {
-            Err(_) => eval_error!(format!("function '{}' not defined", name)),
+            Err(_) => eval_error!(format!("Function '{}' not defined", name)),
             Ok(func) => {
                 self.eval_func_obj(&func, args, Some(name))
             },

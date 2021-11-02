@@ -178,6 +178,28 @@ fn _vars(ns: &mut NameSpace, args: &Vec<Block>) -> Result<Block, KrustyErrorType
     }
 }
 
+// ================ error handling ====================
+
+fn _try(ns: &mut NameSpace, args: &Vec<Block>) -> Result<Block, KrustyErrorType> {
+    func_nargs_eq!(args, 2);
+    let noargs = Block::List(vec![]);
+
+    let mut res = if let Block::Func(_) | Block::NativeFunc(_) = &args[0] {
+        ns.eval_func_obj(&args[0], &noargs, None)
+    } else {
+        eval_error!("Arguments must be functions")
+    };
+
+    if res.is_err() {
+        res = if let Block::Func(_) | Block::NativeFunc(_) = &args[1] {
+            ns.eval_func_obj(&args[1], &noargs, None)
+        } else {
+            eval_error!("Arguments must be functions")
+        };
+    }
+    res
+}
+
 
 // ================ process =======================
 
@@ -215,6 +237,7 @@ pub fn load_all(env_native: &mut HashMap<String, Block>) {
     helper::load_func(env_native, "if", _if);
     helper::load_func(env_native, "len", _len);
     helper::load_func(env_native, "foreach", _foreach);
+    helper::load_func(env_native, "try", _try);
     helper::load_func(env_native, "vars", _vars);
 
     helper::load_func(env_native, "import", _import);
