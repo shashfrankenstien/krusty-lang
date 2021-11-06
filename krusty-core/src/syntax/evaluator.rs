@@ -8,7 +8,7 @@ use std::env; // required for print_verbose! macro
 use super::parser::{Block, Expression};
 use super::lexer::Token;
 
-use crate::lib::{moddef, builtins};
+use crate::lib::{moddef::Module, builtins};
 use crate::lib::errors::{Error, KrustyErrorType};
 
 
@@ -18,25 +18,24 @@ use crate::lib::errors::{Error, KrustyErrorType};
 pub struct NameSpace<'a> {
     builtin_funcs: Option<HashMap<String, Block>>,
     parent: Option<&'a NameSpace<'a>>,
-    pub module: moddef::Module,
+    pub module: Module,
 }
 
 
 impl<'a> NameSpace<'a> {
     pub fn new(path: Option<&PathBuf>, parent: Option<&'a NameSpace<'a>>) -> NameSpace<'a> {
         let mut builtin_funcs: Option<HashMap<String, Block>> = None;
-        if let None = parent {
+        if parent.is_none() {
             let mut b = HashMap::new();
             builtins::load_all(&mut b);
             builtin_funcs = Some(b);
         }
         NameSpace {
-            module: moddef::Module::new(path),
+            module: Module::new(path),
             builtin_funcs,
             parent,
         }
     }
-
 
     pub fn to_block(self) -> Result<Block, KrustyErrorType> {
         Ok(Block::Mod(self.module))
@@ -47,7 +46,7 @@ impl<'a> NameSpace<'a> {
         for (_i, o) in elist.iter().enumerate() {
             return_val = self.solve_expr(o)?;
             if let Block::Operator(Token::FuncReturn) = o.op {
-                if let None = self.parent {
+                if self.parent.is_none() { // parent is None at the top level
                     eval_error!("cannot use return here!")
                 } else {
                     return Ok(return_val)
@@ -81,7 +80,7 @@ impl<'a> NameSpace<'a> {
     }
 
     fn get_mut(&mut self, key: &String) -> Result<&mut Block, KrustyErrorType> {
-        // for now, refs are mutable by default and can only be gotten from within the same scope
+        // for now, mutable refs can only be gotten from within the same scope
         match self.module.vars.get_mut(key) {
             Some(v) => Ok(v),
             None => eval_error!(format!("Symbol '{}' not found in scope", key))
@@ -134,7 +133,7 @@ impl<'a> NameSpace<'a> {
             Block::Object(Token::Symbol(s)) => self.get(s),
             // Block::List(l) => Ok(Block::List(l.into_iter().map(|x| self.resolve(x)?).collect())),
             Block::List(l) => {
-                let bl = NameSpace::resolve_vector(l, &mut |x| self.resolve(x))?;
+                let bl = self.resolve_vector(l)?;
                 Ok(Block::List(bl))
             },
             Block::ModBody(m) => {
@@ -148,12 +147,10 @@ impl<'a> NameSpace<'a> {
         }
     }
 
-    pub fn resolve_vector<I, F>(input: &Vec<I>, solver: &mut F) -> Result<Vec<Block>, KrustyErrorType>
-        where F: FnMut(&I) -> Result<Block, KrustyErrorType>
-    {
+    pub fn resolve_vector(&mut self, input: &Vec<Block>) -> Result<Vec<Block>, KrustyErrorType> {
         let mut out: Vec<Block> = Vec::new();
         for i in input.into_iter() {
-            let o = solver(i)?;
+            let o = self.resolve(i)?;
             out.push(o);
         }
         Ok(out)
@@ -182,10 +179,10 @@ impl<'a> NameSpace<'a> {
                                 m.vars.insert(prop.to_string(), val);
                                 Ok(())
                             },
-                            _ => eval_error!("Unsupported assignment")
+                            _ => eval_error!("Unsupported assignment rhs")
                         }
                     },
-                    _ => eval_error!("Unsupported assignment")
+                    _ => eval_error!("Unsupported assignment lhs")
                 }
 
             }
@@ -229,7 +226,7 @@ impl<'a> NameSpace<'a> {
 
     fn solve_comparison(&mut self, op: &String, elems: &Vec<Block>) ->Result<Block, KrustyErrorType> {
         // this function uses Rust's PartialEq and PartialOrd to do comparison
-        let vals: Vec<Block> = NameSpace::resolve_vector(elems, &mut |x| self.resolve(x))?; //elems.iter().map(|x| self.resolve(x)?).collect();
+        let vals: Vec<Block> = self.resolve_vector(elems)?; //elems.iter().map(|x| self.resolve(x)?).collect();
         // println!("{} ", builtins::_type(&vec![vals[0].clone()]) == builtins::_type(&vec![vals[1].clone()]));
         print_verbose!("compare {} {:?}", op, vals);
         match &op[..] {
@@ -260,23 +257,38 @@ impl<'a> NameSpace<'a> {
                 if req_args.len() != args.len() {
                     eval_error!(format!("function arguments for '{}' don't match", name));
                 } else {
-                    let mut exec_env = NameSpace::new(None, Some(self));
-                    for (k,v) in req_args.iter().zip(args.iter()) {
-                        exec_env.assign(&k, &v)?;
-                    }
-                    print_verbose!("CALL {} {:?}", name, f.body);
                     match &f.body { // return function result
-                        Block::FuncBody(elist) => exec_env.run(&elist),
+                        Block::FuncBody(elist) => {
+                            let mut exec_env = NameSpace::new(None, Some(self));
+                            print_verbose!("CALL {} {:?}", name, f.body);
+                            for (k,v) in req_args.iter().zip(args.iter()) {
+                                exec_env.assign(&k, &v)?;
+                            }
+                            exec_env.run(&elist)
+                        },
                         _ => eval_error!(format!("Function '{}' definition error", name)),
                     }
                 }
             },
             Block::NativeFunc(f) => {
-                let clean_args: Vec<Block> = NameSpace::resolve_vector(&args, &mut |x| self.resolve(x))?;
+                let clean_args: Vec<Block> = self.resolve_vector(&args)?;
                 (f.func)(self, &clean_args)
             }
             _ => eval_error!(format!("Function '{}' definition error", name))
         }
+    }
+
+    pub fn eval_func_obj_vector(
+        &mut self, func:
+        &Block, args: &Vec<Block>,
+        name: Option<&String>) -> Result<Vec<Block>, KrustyErrorType>  {
+
+            let mut out: Vec<Block> = Vec::new();
+            for i in args.into_iter() {
+                let o = self.eval_func_obj(func, &i, name)?;
+                out.push(o);
+            }
+            Ok(out)
     }
 
     fn eval_func(&mut self, name: &String, args: &Block) -> Result<Block, KrustyErrorType> {
@@ -338,7 +350,7 @@ impl<'a> NameSpace<'a> {
                 }
             },
             Block::Operator(Token::FuncReturn) => { // will only return a list type object??
-                let ret_list: Vec<Block> = NameSpace::resolve_vector(&exp.elems, &mut |e| self.resolve(e))?;
+                let ret_list: Vec<Block> = self.resolve_vector(&exp.elems)?;
                 Ok(match ret_list.len() {
                     // We also unwrap these late evaluated lists in case it has 0 or 1 elements
                     0 => Block::Null,
@@ -349,7 +361,7 @@ impl<'a> NameSpace<'a> {
             Block::Operator(Token::List) => {
                 // These are some List type Expressions still unconverted to Block::List
                 // They are usually deep inside a function definition needing late evaluation
-                let ret_list: Vec<Block> = NameSpace::resolve_vector(&exp.elems, &mut |e| self.resolve(e))?;
+                let ret_list: Vec<Block> = self.resolve_vector(&exp.elems)?;
                 Ok(match ret_list.len() {
                     // We also unwrap these late evaluated lists in case it has 0 or 1 elements
                     0 => Block::Null,
@@ -369,8 +381,13 @@ impl<'a> NameSpace<'a> {
                 if exp.elems.len() != 2 {
                     eval_error!("Illegal access operation");
                 }
-                match self.resolve(&exp.elems[0])? {
-                    Block::Mod(m) => {
+                let module = match self.resolve(&exp.elems[0])? {
+                    Block::Mod(m) => Some(m),
+                    _ => None
+                };
+
+                match module {
+                    Some(m) => {
                         match &exp.elems[1] {
                             Block::Object(Token::Symbol(s)) => {
                                 let var = m.vars.get(s);
@@ -382,18 +399,19 @@ impl<'a> NameSpace<'a> {
                                     _ => {
                                         let mut ns = NameSpace { // create new execution namespace
                                             builtin_funcs: None,
-                                            module: m,
-                                            parent: Some(&self)
+                                            module: m.clone(),
+                                            parent: Some(self)
                                         };
                                         ns.solve_expr(x)
                                     }
                                 }
                             },
-                            _ => eval_error!("invalid use of '.' accessor")
+                            _ => eval_error!("invalid rhs for '.' accessor")
                         }
                     },
-                    _ => eval_error!("invalid use of '.' accessor")
+                    None => eval_error!("invalid lhs for '.' accessor2")
                 }
+
             }
             _ => exp.clone().to_block()
         }

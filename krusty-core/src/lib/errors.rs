@@ -66,13 +66,13 @@ impl fmt::Display for Box<dyn KrustyError> {
 }
 
 
+// implement From for KrustyError trait
+
 impl From<io::Error> for Box<dyn KrustyError> {
 	fn from(e: io::Error) -> Box<dyn KrustyError> {
 		Box::new(Error::LexerError{msg: e.to_string(), fname: String::from(""), lino: -1})  // io:Error happens in Lexer while reading a file
 	}
 }
-
-
 
 impl From<&'static str> for Box<dyn KrustyError> {
 	fn from(e: &'static str) -> Box<dyn KrustyError> {
@@ -80,3 +80,8 @@ impl From<&'static str> for Box<dyn KrustyError> {
 	}
 }
 
+impl From<Error> for Box<dyn KrustyError> {
+	fn from(e: Error) -> Box<dyn KrustyError> {
+		Box::new(e)
+	}
+}

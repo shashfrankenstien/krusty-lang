@@ -141,12 +141,12 @@ fn _foreach(ns: &mut NameSpace, args: &Vec<Block>) -> Result<Block, KrustyErrorT
         let res: Vec<Block>;
         return match &args[0] {
             Block::List(l) => {
-                res = NameSpace::resolve_vector(&l, &mut |x| ns.eval_func_obj(&args[1], &x, None))?;
+                res = ns.eval_func_obj_vector(&args[1], &l, None)?;
                 Ok(Block::List(res))
             },
             Block::Object(Token::Text(t)) => {
-                let mut chars = t.chars().collect::<Vec<char>>();
-                res = NameSpace::resolve_vector(&mut chars, &mut |c| ns.eval_func_obj(&args[1], &Block::Object(Token::Text(c.to_string())), None))?;
+                let chars = t.chars().map(|c| Block::Object(Token::Text(c.to_string()))).collect::<Vec<Block>>();
+                res = ns.eval_func_obj_vector(&args[1], &chars, None)?;
                 // res = t.chars().map(|c| ns.eval_func_obj(&args[1], &Block::Object(Token::Text(c.to_string())), None)).collect();
                 Ok(Block::List(res))
             },

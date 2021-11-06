@@ -18,10 +18,6 @@ pub fn push_tweaked(tkn: Token, dest: &mut Vec<Token>) {
             dest.push(Token::Index);
             dest.push(tkn);
         },
-        Token::Symbol(s) if s == "ret" => {
-            dest.push(Token::FuncReturn);
-            return
-        },
         _ => dest.push(tkn)
     };
 }
