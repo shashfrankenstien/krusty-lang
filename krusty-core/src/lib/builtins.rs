@@ -227,7 +227,7 @@ fn _assert(_ns: &mut NameSpace, args: &Vec<Block>) -> Result<Block, KrustyErrorT
 // ================ namespace helper functions ====================
 
 
-pub fn load_all(env_native: &mut HashMap<String, Block>) {
+pub fn load_builtins(env_native: &mut HashMap<String, Block>) {
     env_native.insert("null".to_string(), Block::Null);
     env_native.insert("true".to_string(), Block::Bool(true));
     env_native.insert("false".to_string(), Block::Bool(false));

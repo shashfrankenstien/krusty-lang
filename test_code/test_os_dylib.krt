@@ -11,3 +11,21 @@ foreach(dirs, mod_print);
 print("\nlistdir test_code/");
 dirs = os.listdir("test_code");
 foreach(dirs, mod_print);
+
+print('\nCurrent working dir:');
+print(os.getcwd());
+
+# =-=-=-=-=-=- file io =-=-=-=-=-=-
+filename = "test.txt";
+
+f = os.create(filename);
+f.write("kkk");
+assert(f.read(1)=="k");
+
+f = os.open(filename);
+
+data = f.read_all();
+foreach(data, print);
+assert(data[0]=="k");
+
+os.remove(filename);

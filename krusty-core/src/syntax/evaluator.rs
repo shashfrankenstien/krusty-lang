@@ -27,7 +27,7 @@ impl<'a> NameSpace<'a> {
         let mut builtin_funcs: Option<HashMap<String, Block>> = None;
         if parent.is_none() {
             let mut b = HashMap::new();
-            builtins::load_all(&mut b);
+            builtins::load_builtins(&mut b);
             builtin_funcs = Some(b);
         }
         NameSpace {
@@ -57,7 +57,7 @@ impl<'a> NameSpace<'a> {
     }
 
 
-    fn get(&self, key: &String) -> Result<Block, KrustyErrorType> {
+    pub fn get(&self, key: &String) -> Result<Block, KrustyErrorType> {
         match self.module.vars.get(key) {
             Some(v) => Ok(v.clone()),
             None => {
@@ -306,7 +306,7 @@ impl<'a> NameSpace<'a> {
         match (idx, things) {
             (Block::Object(Token::Number(n)), Block::List(a)) => Ok(a[*n as usize].clone()),
             (Block::Object(Token::Number(n)), Block::Object(Token::Text(a))) => {
-                Ok(Block::Object(Token::Text(a.chars().nth(*n as usize).unwrap().to_string())))
+                Ok(Block::Object(Token::Text(a.chars().nth(*n as usize).ok_or("Index out of range")?.to_string())))
             },
             _ => eval_error!(format!("cannot index {:?} with {:?}", things, idx))
         }
