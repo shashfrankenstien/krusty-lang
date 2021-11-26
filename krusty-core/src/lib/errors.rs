@@ -23,6 +23,7 @@ pub enum Error {
 	LexerError{msg: String, fname: String, lino: i32},
 	ParserError{msg: String, fname: String, lino: i32},
 	EvalError{msg: String, fname: String, lino: i32},
+	ImportError{msg: String, fname: String, lino: i32},
 	SysExit{msg: String, fname: String, lino: i32},
 }
 
@@ -34,6 +35,7 @@ impl KrustyError for Error {
 			Error::LexerError{..} => "LexerError".to_string(),
 			Error::ParserError{..} => "ParserError".to_string(),
 			Error::EvalError{..} => "EvalError".to_string(),
+			Error::ImportError{..} => "ImportError".to_string(),
 			Error::SysExit{..} => "SysExit".to_string(),
 		}
 	}
@@ -44,6 +46,7 @@ impl KrustyError for Error {
 			Error::LexerError{msg, ..} => msg,
 			Error::ParserError{msg, ..} => msg,
 			Error::EvalError{msg, ..} => msg,
+			Error::ImportError{msg, ..} => msg,
 			Error::SysExit{msg, ..} => msg,
 		}
 	}
@@ -77,6 +80,12 @@ impl From<io::Error> for Box<dyn KrustyError> {
 impl From<&'static str> for Box<dyn KrustyError> {
 	fn from(e: &'static str) -> Box<dyn KrustyError> {
 		Box::new(Error::GenericError{msg: e.to_string(), fname: String::from(""), lino: -1})  // convert string to error
+	}
+}
+
+impl From<String> for Box<dyn KrustyError> {
+	fn from(e: String) -> Box<dyn KrustyError> {
+		Box::new(Error::GenericError{msg: e, fname: String::from(""), lino: -1})  // convert string to error
 	}
 }
 

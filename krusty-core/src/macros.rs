@@ -29,6 +29,13 @@ macro_rules! eval_error {
     };
 }
 
+#[macro_export]
+macro_rules! import_error {
+    ($plain_string:expr) => {
+        return Err(Box::new(Error::ImportError{msg: $plain_string.to_string(), fname: String::from(""), lino: -1}))
+    };
+}
+
 
 #[macro_export]
 macro_rules! sys_exit_error {

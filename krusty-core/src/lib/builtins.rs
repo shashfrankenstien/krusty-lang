@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 #[cfg(debug_assertions)]
 use std::env; // required for print_verbose! macro
 
@@ -8,7 +6,9 @@ use crate::syntax::{parser, parser::Block};
 use crate::syntax::evaluator::NameSpace;
 
 use super::errors::{Error, KrustyErrorType};
+use super::moddef::ModuleVars;
 use super::helper;
+use super::pkg;
 
 // ================ print =======================
 
@@ -75,10 +75,7 @@ fn _import(ns: &mut NameSpace, args: &Vec<Block>) -> Result<Block, KrustyErrorTy
     func_nargs_eq!(args, 1);
     match &args[0] {
         Block::Object(Token::Text(p)) => {
-            let mut p = ns.get_relative_path(p);
-            if !p.ends_with("krt") {
-                p.set_extension("krt");
-            }
+            let p = pkg::search_for_module(ns, p)?;
             print_verbose!("import({:?})", p);
             let mut tokens = lexer::lex_file(&p)?;
             let tree = parser::parse(&mut tokens)?;
@@ -99,7 +96,7 @@ fn _import_native(ns: &mut NameSpace, args: &Vec<Block>) -> Result<Block, Krusty
         Block::Object(Token::Text(p)) => {
             let mut p = ns.get_relative_path(&p);
             // let fname = libloading::library_filename(p.file_name().unwrap());
-            helper::convert_dylib_os_name(&mut p);
+            pkg::to_native_dylib_name(&mut p)?;
 
             print_verbose!("import_native({:?})", p);
 
@@ -227,7 +224,7 @@ fn _assert(_ns: &mut NameSpace, args: &Vec<Block>) -> Result<Block, KrustyErrorT
 // ================ namespace helper functions ====================
 
 
-pub fn load_builtins(env_native: &mut HashMap<String, Block>) {
+pub fn load_builtins(env_native: &mut ModuleVars) {
     env_native.insert("null".to_string(), Block::Null);
     env_native.insert("true".to_string(), Block::Bool(true));
     env_native.insert("false".to_string(), Block::Bool(false));

@@ -256,8 +256,8 @@ pub fn lex(code: &String) -> Result<TokenStream, KrustyErrorType> {
 
 
 pub fn lex_file(filepath: &PathBuf) -> Result<TokenStream, KrustyErrorType> {
-    let filepath = fs::canonicalize(filepath).expect("No such File!");
-    let mut f = fs::File::open(filepath).expect("Oh, no such file!");
+    let filepath = fs::canonicalize(filepath)?;
+    let mut f = fs::File::open(filepath)?;
     let mut code = String::new();
     f.read_to_string(&mut code)?;//.expect("Can't read this");
 

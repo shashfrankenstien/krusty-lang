@@ -112,8 +112,8 @@ impl<'a> NameSpace<'a> {
                 } else {
                     newbuf.set_file_name(PathBuf::from_slash(p)); // replace filename
                 }
-                 // this step ensures `..` is translated
-                 // without this `..` fails on windows
+                // this step ensures `..` is translated
+                // without this `..` fails on windows
                 let mut out = PathBuf::new();
                 for c in newbuf.components() {
                     match c {

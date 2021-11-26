@@ -1,6 +1,7 @@
 libpi = import("mathlib/pi");
 arith = import("mathlib/arith");
 
+
 add = arith.add;
 sub = arith.sub;
 mul = arith.mul;
@@ -14,3 +15,9 @@ circle = {
 
 assert(type(circle)==type({})); # module type
 assert(circle.area(2)==libpi.pi * 2 * 2);
+
+
+math = import("mathlib");
+print(vars(math));
+print(math.pi);
+assert(math.pi == libpi.pi);

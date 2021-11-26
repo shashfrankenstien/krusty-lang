@@ -18,6 +18,7 @@ pub mod lib {
     pub mod moddef;
     pub mod builtins;
     pub mod errors;
+    pub mod pkg;
 }
 
 

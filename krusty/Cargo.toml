@@ -9,5 +9,6 @@ edition = "2018"
 
 [dependencies]
 path-slash = "0.1.3"
+clap = "3.0.0-beta.5"
 krusty-core = { path = "../krusty-core" }
 krusty-repl = { path = "../krusty-repl" }

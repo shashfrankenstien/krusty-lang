@@ -7,8 +7,6 @@
 *
 */
 
-use std::path::PathBuf;
-
 use crate::lib::{funcdef, moddef};
 use crate::syntax::parser::Block;
 
@@ -35,42 +33,4 @@ pub fn load_func(hm: &mut moddef::ModuleVars, name: &str, f: funcdef::NativeFunc
     hm.insert(name.to_string(), Block::NativeFunc(
         funcdef::NativeFuncDef::new(f, name)
     ));
-}
-
-
-pub fn convert_dylib_os_name(p: &mut PathBuf) {
-    let mut fname = p.file_name()
-        .expect("filename not valid")
-        .to_str()
-        .expect("filename not valid")
-        .to_owned();
-
-    #[cfg(target_os = "windows")]
-    {
-        if !fname.ends_with(".dll") {
-            fname = fname + ".dll"
-        }
-        p.set_file_name(fname);
-    }
-    #[cfg(target_os = "macos")]
-    {
-        if !fname.starts_with("lib") {
-            fname = "lib".to_owned() + &fname;
-        }
-        if !fname.ends_with(".dylib") {
-            fname = fname + ".dylib"
-        }
-        p.set_file_name(fname);
-    }
-
-    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
-    {
-        if !fname.starts_with("lib") {
-            fname = "lib".to_owned() + &fname;
-        }
-        if !fname.ends_with(".so") {
-            fname = fname + ".so"
-        }
-        p.set_file_name(fname);
-    }
 }

@@ -2,6 +2,8 @@ use std::path::PathBuf;
 use path_slash::PathBufExt; // for PatjBuf::from_slash() trait
 use std::env; // required for print_verbose! macro
 
+use clap::Parser;
+
 
 #[macro_use] extern crate krusty_repl;
 use krusty_repl::prompt;
@@ -12,7 +14,12 @@ use krusty_core::syntax::parser;
 use krusty_core::syntax::evaluator;
 use krusty_core::lib::errors::{Error, KrustyErrorType};
 
-const VERSION_STR: &'static str = env!("CARGO_PKG_VERSION");
+use krusty_core::lib::pkg;
+
+
+pub const APP_NAME_STR: &'static str = env!("CARGO_PKG_NAME");
+pub const VERSION_STR: &'static str = env!("CARGO_PKG_VERSION");
+
 
 
 
@@ -86,12 +93,32 @@ fn run_file(filepath: &PathBuf) -> Result<(), KrustyErrorType> {
 }
 
 
+// fn install_native_module(path)
+
+
+
+
+/// Experimental programing language written in Rust
+#[derive(Parser)]
+#[clap(name = APP_NAME_STR)]
+pub struct CliOpts {
+
+    /// script files to run (List)
+    pub scripts: Vec<String>,
+
+    /// package paths to install
+    #[clap(short, long, name = "packages")]
+    pub install: Option<Vec<String>>,
+}
+
+
+
 fn main() -> Result<(), i8> {
-    let argv: Vec<String> = env::args().collect();
-    // println!("{:?}", argv.len());
     let mut success: bool = true;
-    if argv.len() > 1 {
-        for f in &argv[1..] {
+    let cli = CliOpts::parse();
+
+    if cli.scripts.len() > 0 {
+        for f in &cli.scripts {
             let filepath = PathBuf::from_slash(f);
             if filepath.is_file() {
                 match run_file(&filepath) {
@@ -106,7 +133,17 @@ fn main() -> Result<(), i8> {
                 }
             }
         }
-    } else {
+    }
+    else if cli.install.is_some() {
+        println!("{:?}", cli.install);
+        for f in &cli.install.unwrap() {
+            if let Err(e) = pkg::install_pkg(f) {
+                println!("{:?}", e.msg());
+                return Err(1)
+            }
+        }
+    }
+    else {
         repl_prompt();
     }
 
