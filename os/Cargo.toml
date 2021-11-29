@@ -11,4 +11,5 @@ path-slash = "0.1.3"
 krusty-core = { path = "../krusty-core" }
 
 [lib]
+name = "os"
 crate-type = ["dylib"]
