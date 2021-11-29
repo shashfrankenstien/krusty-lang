@@ -20,8 +20,8 @@ use krusty_core::lib::pkg;
 pub const APP_NAME_STR: &'static str = env!("CARGO_PKG_NAME");
 pub const VERSION_STR: &'static str = env!("CARGO_PKG_VERSION");
 
-
-
+const REPL_HISTFILE: &'static str = "history.txt";
+const REPL_HISTLEN: usize = 20;
 
 fn is_sysexit(err: &KrustyErrorType) -> bool {
     match err.as_any().downcast_ref::<Error>() {
@@ -53,7 +53,9 @@ fn repl_prompt() {
     let cwd = env::current_dir().unwrap_or(PathBuf::from("."));
     let mut ns = evaluator::NameSpace::new(Some(&cwd), None);
 
-    let mut cli = prompt::Prompt::new();
+    let mut cli_hist_file = pkg::get_install_path().unwrap_or(PathBuf::from("."));
+    cli_hist_file.push(REPL_HISTFILE);
+    let mut cli = prompt::Prompt::new(cli_hist_file, REPL_HISTLEN);
     loop {
         let buffer = cli.read_expr();
         match buffer {
@@ -135,7 +137,6 @@ fn main() -> Result<(), i8> {
         }
     }
     else if cli.install.is_some() {
-        println!("{:?}", cli.install);
         for f in &cli.install.unwrap() {
             if let Err(e) = pkg::install_pkg(f) {
                 println!("{:?}", e.msg());

@@ -26,6 +26,8 @@ else
     endif
 endif
 
+BIN_PATH = $(INSTALL_PATH)/bin
+
 
 
 all: build
@@ -34,11 +36,10 @@ build:
 	cargo build
 
 install: build
-	mkdir -p $(INSTALL_PATH)
-	$(CP) $(APP_DIST_DIR)/$(APP) $(INSTALL_PATH)/$(APP)
-# $(CP) $(APP_DIST_DIR)/*.$(LIB_EXT) $(INSTALL_PATH)
-	$(INSTALL_PATH)/$(APP) --install test_code/mathlib
-	$(INSTALL_PATH)/$(APP) --install $(APP_DIST_DIR)/*.$(LIB_EXT)
+	mkdir -p $(BIN_PATH)
+	$(CP) $(APP_DIST_DIR)/$(APP) $(BIN_PATH)/$(APP)
+	$(BIN_PATH)/$(APP) --install $(APP_DIST_DIR)/*.$(LIB_EXT)
+# $(INSTALL_PATH)/$(APP) --install test_code/mathlib
 
 uninstall:
 	$(DEL) $(INSTALL_PATH)

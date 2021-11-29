@@ -1,9 +1,7 @@
 use std::ops::Drop;
+use std::path::PathBuf;
 
 use rustyline::{self, error::ReadlineError, config::Configurer};
-
-const HISTFILE: &'static str = "history.txt";
-const HISTLEN: usize = 20;
 
 
 #[derive(Debug)]
@@ -11,17 +9,21 @@ pub struct Prompt {
     cli: rustyline::Editor::<()>,
     want_pair: Vec<char>,
     line_count: i32,
+    hist_path: PathBuf,
+    hist_len: usize
 }
 
 impl Prompt {
-    pub fn new() -> Prompt {
+    pub fn new(hist_path: PathBuf, hist_len: usize) -> Prompt {
         let mut cli = rustyline::Editor::<()>::new();
-        cli.set_max_history_size(HISTLEN);
-        cli.load_history(HISTFILE).unwrap_or(());
+        cli.set_max_history_size(hist_len);
+        cli.load_history(&hist_path).unwrap_or(());
         Prompt{
             cli,
             want_pair: Vec::new(),
             line_count: 0,
+            hist_path,
+            hist_len
         }
     }
 
@@ -83,7 +85,7 @@ impl Prompt {
 
 impl Drop for Prompt {
     fn drop(&mut self) {
-        self.cli.save_history(HISTFILE).unwrap();
+        self.cli.save_history(&self.hist_path).unwrap();
     }
 }
 

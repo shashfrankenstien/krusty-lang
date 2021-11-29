@@ -28,6 +28,12 @@ fn normalize_import_path(p: &mut PathBuf) {
     }
 }
 
+pub fn get_install_path() -> Result<PathBuf, KrustyErrorType> {
+    let mut install_path = dirs::home_dir().ok_or("HOME dir not found")?;
+    install_path.push(INSTALL_FOLDER);
+    Ok(install_path)
+}
+
 pub fn search_for_module(ns: &NameSpace, name: &String) -> Result<PathBuf, KrustyErrorType> {
     // Checks for non native modules or files in different locations
     // 1. Check current working directory
@@ -50,8 +56,7 @@ pub fn search_for_module(ns: &NameSpace, name: &String) -> Result<PathBuf, Krust
     }
 
     // 3. Check pkg installation directory
-    let mut pkg_path = dirs::home_dir().ok_or("HOME dir not found")?;
-    pkg_path.push(INSTALL_FOLDER);
+    let mut pkg_path = get_install_path()?;
     pkg_path.push(INSTALL_SUBFOLDER);
     pkg_path.push(name);
     normalize_import_path(&mut pkg_path);
@@ -159,10 +164,10 @@ pub fn copy_dir<U: AsRef<Path>, V: AsRef<Path>>(from: U, to: V) -> Result<(), Kr
 pub fn install_pkg(path_str: &String) -> Result<(), KrustyErrorType> {
     // installs a package directory, language file or native dylib
     // 1. test for package directory (must contain DIR_PKG_INITIALIZER file)
+    println!("Installing {:?}", path_str);
     let pkg_path = PathBuf::from(path_str);
 
-    let mut dst_path = dirs::home_dir().ok_or("HOME dir not found")?;
-    dst_path.push(INSTALL_FOLDER);
+    let mut dst_path = get_install_path()?;
     dst_path.push(INSTALL_SUBFOLDER);
 
     if pkg_path.is_dir() {
