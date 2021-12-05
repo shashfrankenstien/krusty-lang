@@ -1,4 +1,4 @@
-# __mod__.rs file is imported if import() is used on the parent directory
+# __pkg__.rs file is imported if import() is used on the parent directory
 # Might be useful to write native modules
 
 spill(import("pi"));
