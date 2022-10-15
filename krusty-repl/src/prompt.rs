@@ -14,17 +14,17 @@ pub struct Prompt {
 }
 
 impl Prompt {
-    pub fn new(hist_path: PathBuf, hist_len: usize) -> Prompt {
-        let mut cli = rustyline::Editor::<()>::new();
+    pub fn new(hist_path: PathBuf, hist_len: usize) -> Result<Prompt, ReadlineError> {
+        let mut cli = rustyline::Editor::<()>::new()?;
         cli.set_max_history_size(hist_len);
         cli.load_history(&hist_path).unwrap_or(());
-        Prompt{
+        Ok(Prompt{
             cli,
             want_pair: Vec::new(),
             line_count: 0,
             hist_path,
             hist_len
-        }
+        })
     }
 
     fn _match_pair(c: char) -> Option<char> {

@@ -43,7 +43,7 @@ fn repl_run_line(ns: &mut evaluator::NameSpace, buf: &String) -> Result<parser::
 }
 
 
-fn repl_prompt() {
+fn repl_prompt() -> Result<(), KrustyErrorType> {
     println!(
         "{} {} {} {}",
         GREEN!("Welcome to Krusty"),
@@ -55,30 +55,38 @@ fn repl_prompt() {
 
     let mut cli_hist_file = pkg::get_install_path().unwrap_or(PathBuf::from("."));
     cli_hist_file.push(REPL_HISTFILE);
-    let mut cli = prompt::Prompt::new(cli_hist_file, REPL_HISTLEN);
-    loop {
-        let buffer = cli.read_expr();
-        match buffer {
-            Ok(buf) if buf.trim().len() == 0 => (),
-            Ok(buf) => {
-                match repl_run_line(&mut ns, &buf) {
-                    Ok(_) => (),
-                    Err(e) => {
-                        if is_sysexit(&e) {
-                            break;
-                        } else {
-                            println!("{}: {}", RED!("Error in expression"), buf.trim());
-                            println!("{}", e.msg());
+    let cli_res = prompt::Prompt::new(cli_hist_file, REPL_HISTLEN);
+
+    match cli_res {
+        Err(_) => generic_error!("Unable to start cli"),
+        Ok(mut cli) => {
+            loop {
+                let buffer = cli.read_expr();
+                match buffer {
+                    Ok(buf) if buf.trim().len() == 0 => (),
+                    Ok(buf) => {
+                        match repl_run_line(&mut ns, &buf) {
+                            Ok(_) => (),
+                            Err(e) => {
+                                if is_sysexit(&e) {
+                                    break;
+                                } else {
+                                    println!("{}: {}", RED!("Error in expression"), buf.trim());
+                                    println!("{}", e.msg());
+                                }
+                            }
                         }
+                    },
+                    Err(e) => { // ctrl-c or ctrl-d
+                        println!("{}", RED!(e.to_string()));
+                        break;
                     }
                 }
-            },
-            Err(e) => { // ctrl-c or ctrl-d
-                println!("{}", RED!(e.to_string()));
-                break;
             }
-        }
+        },
     }
+
+    Ok(())
 }
 
 
@@ -145,7 +153,10 @@ fn main() -> Result<(), i8> {
         }
     }
     else {
-        repl_prompt();
+        let res = repl_prompt();
+        if res.is_err() {
+            success = false;
+        }
     }
 
     if success {
