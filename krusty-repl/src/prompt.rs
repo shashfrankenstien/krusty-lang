@@ -8,9 +8,9 @@ use rustyline::{self, error::ReadlineError, config::Configurer};
 pub struct Prompt {
     cli: rustyline::Editor::<()>,
     want_pair: Vec<char>,
-    line_count: i32,
+    // line_count: i32,
     hist_path: PathBuf,
-    hist_len: usize
+    // hist_len: usize
 }
 
 impl Prompt {
@@ -21,9 +21,9 @@ impl Prompt {
         Ok(Prompt{
             cli,
             want_pair: Vec::new(),
-            line_count: 0,
+            // line_count: 0,
             hist_path,
-            hist_len
+            // hist_len
         })
     }
 
